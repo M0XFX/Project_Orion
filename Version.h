@@ -1,0 +1,10 @@
+#ifndef VERSION_H
+#define VERSION_H
+
+#define ORION_VERSION_MAJOR 0
+#define ORION_VERSION_MINOR 2
+#define ORION_VERSION_PATCH 0
+
+#define ORION_VERSION_STRING "0.2.0"
+
+#endif

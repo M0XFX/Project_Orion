@@ -20,11 +20,11 @@ qt_add_executable(appHF_SDR_Display
 qt_add_qml_module(appHF_SDR_Display
     URI HF_SDR_Display
     QML_FILES
-        Main.qml
-        QML_FILES FrequencyDisplay.qml
-        QML_FILES SpectrumDisplay.qml
-        QML_FILES WaterfallDisplay.qml
-        QML_FILES ControlBar.qml
+	QML_FILES qml/Main.qml
+	QML_FILES qml/FrequencyDisplay.qml
+	QML_FILES qml/SpectrumDisplay.qml
+	QML_FILES qml/WaterfallDisplay.qml
+	QML_FILES qml/ControlBar.qml
         SOURCES
         SOURCES Radio.h Radio.cpp
         SOURCES vfo.h vfo.cpp

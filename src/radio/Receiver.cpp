@@ -1,24 +1,29 @@
 #include "Receiver.h"
 #include "Logger.h"
 
-#include <cmath>
-
 Receiver::Receiver(QObject* parent)
     : QObject(parent),
-    m_iqBuffer(2048),
-    m_displayBuffer(256),
-    m_receiverBuffer(256),
-    m_audioIqBuffer(256),
     m_iqRingBuffer(64)
 {
     m_activeSource = &m_rtlDevice;
-    m_displayDdc.setSampleRate(2048000.0f);
-    m_displayDdc.setFrequencyShiftHz(100000.0f);
-    m_receiverDdc.setSampleRate(2048000.0f);
-    m_receiverDdc.setFrequencyShiftHz(100000.0f);
-    connect(&m_spectrumTimer, &QTimer::timeout, this, &Receiver::updateSpectrum);
 
-    m_spectrumTimer.setInterval(33);
+    createWorkers();
+
+    HFSDR::Logger::info(
+        "Receiver initialised."
+        );
+}
+
+Receiver::~Receiver()
+{
+    stopWorkers();
+}
+
+void Receiver::createWorkers()
+{
+    //
+    // IQ source worker
+    //
 
     m_sourceWorker = new IQSourceWorker(
         m_activeSource,
@@ -62,14 +67,79 @@ Receiver::Receiver(QObject* parent)
                 );
         }
         );
+
+    //
+    // DSP worker
+    //
+
+    m_dspWorker = new HFSDR::DSPWorker(
+        &m_iqRingBuffer
+        );
+
+    m_dspWorker->moveToThread(
+        &m_dspThread
+        );
+
+    connect(
+        &m_dspThread,
+        &QThread::started,
+        m_dspWorker,
+        &HFSDR::DSPWorker::start
+        );
+
+    connect(
+        m_dspWorker,
+        &HFSDR::DSPWorker::stopped,
+        &m_dspThread,
+        &QThread::quit
+        );
+
+    connect(
+        m_dspWorker,
+        &HFSDR::DSPWorker::spectrumReady,
+        this,
+        &Receiver::handleSpectrumReady,
+        Qt::QueuedConnection
+        );
+
+    connect(
+        m_dspWorker,
+        &HFSDR::DSPWorker::errorOccurred,
+        this,
+        [](const QString& message) {
+            HFSDR::Logger::error(message);
+        }
+        );
+
+    connect(
+        &m_dspThread,
+        &QThread::finished,
+        this,
+        []() {
+            HFSDR::Logger::info(
+                "DSP worker thread finished."
+                );
+        }
+        );
 }
 
-Receiver::~Receiver()
+void Receiver::stopWorkers()
 {
-    m_spectrumTimer.stop();
+    //
+    // Stop acquisition first so no more IQ blocks
+    // are written into the ring buffer.
+    //
 
     if (m_sourceWorker)
         m_sourceWorker->stop();
+
+    //
+    // Wake and stop DSPWorker if it is blocked
+    // inside waitAndPop().
+    //
+
+    if (m_dspWorker)
+        m_dspWorker->stop();
 
     m_iqRingBuffer.stop();
 
@@ -78,17 +148,25 @@ Receiver::~Receiver()
         m_sourceThread.wait();
     }
 
+    if (m_dspThread.isRunning()) {
+        m_dspThread.quit();
+        m_dspThread.wait();
+    }
+
     delete m_sourceWorker;
     m_sourceWorker = nullptr;
-}
 
+    delete m_dspWorker;
+    m_dspWorker = nullptr;
+}
 
 QString Receiver::status() const
 {
     return m_status;
 }
 
-void Receiver::setStatus(const QString &status)
+void Receiver::setStatus(
+    const QString& status)
 {
     if (m_status == status)
         return;
@@ -102,83 +180,47 @@ QVariantList Receiver::spectrumBins() const
     return m_spectrumBins;
 }
 
+QObject* Receiver::rtlDevice()
+{
+    return &m_rtlDevice;
+}
+
+bool Receiver::simulatorEnabled() const
+{
+    return m_simulatorEnabled;
+}
+
+void Receiver::setSimulatorEnabled(
+    bool enabled)
+{
+    if (m_simulatorEnabled == enabled)
+        return;
+
+    m_simulatorEnabled = enabled;
+    emit simulatorEnabledChanged();
+
+    HFSDR::Logger::info(
+        enabled
+            ? "IQ simulator enabled."
+            : "IQ simulator disabled."
+        );
+}
+
 void Receiver::startSpectrum()
 {
-    HFSDR::Logger::info("Starting spectrum display.");
-
-    setStatus("Simulated IQ Source");
-
-    m_spectrumTimer.start();
+    HFSDR::Logger::info(
+        "Spectrum display ready."
+        );
 }
 
 void Receiver::stopSpectrum()
 {
-    HFSDR::Logger::info("Stopping simulated spectrum.");
-
-    m_spectrumTimer.stop();
-    setStatus("Stopped");
-}
-
-void Receiver::updateSpectrum()
-{
-
-    bool gotSamples = false;
-
-    if (m_rtlDevice.connected()) {
-        // Drain the queue and retain the newest available IQ block.
-        // The spectrum display does not need to process every historical block.
-        while (m_iqRingBuffer.pop(m_iqBuffer)) {
-            gotSamples = true;
-        }
-    }
-
-
-
-
-
-    if (!gotSamples && m_simulatorEnabled) {
-        m_signalGenerator.generate(m_iqBuffer, m_sampleRate, m_toneFrequency);
-        gotSamples = true;
-    }
-
-    if (!gotSamples) {
-        m_fftBins.clear();
-        m_spectrumBins.clear();
-        emit spectrumBinsChanged();
-        return;
-    }
-
-    //m_ddc.process(m_iqBuffer, m_ddcBuffer);
-    //m_dspProcessor.process(m_ddcBuffer, m_dspBuffer);
-    //m_fftProcessor.process(m_dspBuffer, m_fftBins);
-
-    //m_displayDdc.process(m_iqBuffer, m_displayBuffer);
-    //m_fftProcessor.process(m_displayBuffer, m_fftBins);
-
-    // Display chain
-    m_displayDdc.process(m_iqBuffer, m_displayBuffer);
-
-    // Receiver chain
-    m_receiverDdc.process(m_iqBuffer, m_receiverBuffer);
-
-    // FFT uses the display path
-    m_fftProcessor.process(m_displayBuffer, m_fftBins);
-
-    // DSP (soon this will become AGC + demodulator)
-    m_dspProcessor.process(m_receiverBuffer, m_audioBuffer);
+    HFSDR::Logger::info(
+        "Spectrum display stopped."
+        );
 
     m_spectrumBins.clear();
-    for (float db : m_fftBins)
-        m_spectrumBins.append(db);
     emit spectrumBinsChanged();
-}
-
-
-
-
-QObject* Receiver::rtlDevice()
-{
-    return &m_rtlDevice;
 }
 
 void Receiver::openRtlDevice()
@@ -189,6 +231,19 @@ void Receiver::openRtlDevice()
     if (!m_rtlDevice.connected())
         return;
 
+    //
+    // Start the DSP consumer first so it is waiting
+    // before the source begins producing IQ blocks.
+    //
+
+    if (!m_dspThread.isRunning()) {
+        HFSDR::Logger::info(
+            "Starting DSP worker thread."
+            );
+
+        m_dspThread.start();
+    }
+
     if (!m_sourceThread.isRunning()) {
         HFSDR::Logger::info(
             "Starting IQ source worker thread."
@@ -198,17 +253,9 @@ void Receiver::openRtlDevice()
     }
 }
 
-bool Receiver::simulatorEnabled() const
+void Receiver::handleSpectrumReady(
+    const QVariantList& spectrumBins)
 {
-    return m_simulatorEnabled;
+    m_spectrumBins = spectrumBins;
+    emit spectrumBinsChanged();
 }
-
-void Receiver::setSimulatorEnabled(bool enabled)
-{
-    if (m_simulatorEnabled == enabled)
-        return;
-
-    m_simulatorEnabled = enabled;
-    emit simulatorEnabledChanged();
-}
-

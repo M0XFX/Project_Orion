@@ -18,7 +18,7 @@ Orion::Orion(QObject *parent)
     m_radio.setMode("FM");
 
     Logger::info("Radio initialised.");
-    Logger::info("Receiver initialised.");
+
     m_receiver.startSpectrum();
 
     m_receiver.openRtlDevice();

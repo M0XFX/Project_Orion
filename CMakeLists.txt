@@ -67,6 +67,7 @@ qt_add_qml_module(Project_Orion
         src/dsp/FFTProcessor.cpp
         src/dsp/DSPProcessor.h
         src/dsp/DSPProcessor.cpp
+        src/dsp/DSPWorker.h src/dsp/DSPWorker.cpp
         src/dsp/FIRFilter.h
         src/dsp/FIRFilter.cpp
         src/dsp/DigitalDownConverter.h
@@ -96,6 +97,7 @@ qt_add_qml_module(Project_Orion
         src/gui/Orion.cpp
         src/gui/Displaysettings.h
         src/gui/Displaysettings.cpp
+
 )
 
 set_target_properties(Project_Orion PROPERTIES

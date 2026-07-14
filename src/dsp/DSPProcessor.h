@@ -10,7 +10,9 @@
 #include "DSBDemodulator.h"
 #include "IQBuffer.h"
 #include "NFMDemodulator.h"
+#include "ProductDetector.h"
 #include "ReceiverConfiguration.h"
+#include "WFMDemodulator.h"
 
 namespace HFSDR
 {
@@ -41,6 +43,8 @@ private:
     AMDemodulator m_amDemodulator;
     DSBDemodulator m_dsbDemodulator;
     NFMDemodulator m_nfmDemodulator;
+    WFMDemodulator m_wfmDemodulator;
+    ProductDetector m_productDetector;
 
     AudioFIRFilter m_audioFilter;
     AudioDecimator m_audioDecimator;

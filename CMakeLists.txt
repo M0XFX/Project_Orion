@@ -101,6 +101,8 @@ qt_add_qml_module(Project_Orion
         src/gui/Displaysettings.cpp
         SOURCES src/core/ReceiverConfiguration.h
         SOURCES src/dsp/NFMDemodulator.h src/dsp/NFMDemodulator.cpp
+        SOURCES src/dsp/WFMDemodulator.h src/dsp/WFMDemodulator.cpp
+        SOURCES src/dsp/ProductDetector.h src/dsp/ProductDetector.cpp
 
 
 )

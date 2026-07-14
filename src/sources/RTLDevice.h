@@ -59,6 +59,10 @@ private:
     QString m_status = "Not Connected";
     bool m_connected = false;
 
+    //quint64 m_centerFrequencyHz = 100700000;
+
+    //quint64 m_centerFrequencyHz = 91600000;
+
     quint64 m_centerFrequencyHz = 60000000;
     quint32 m_sampleRate = 2048000;
 

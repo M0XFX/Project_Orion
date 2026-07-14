@@ -10,6 +10,7 @@
 #include "IQBlockRingBuffer.h"
 #include "IQSource.h"
 #include "IQSourceWorker.h"
+#include "ReceiverConfiguration.h"
 #include "RTLDevice.h"
 
 class Receiver : public QObject
@@ -43,7 +44,10 @@ class Receiver : public QObject
         )
 
 public:
-    explicit Receiver(QObject* parent = nullptr);
+    explicit Receiver(
+        QObject* parent = nullptr
+        );
+
     ~Receiver() override;
 
     QString status() const;
@@ -54,12 +58,28 @@ public:
     QObject* rtlDevice();
 
     bool simulatorEnabled() const;
-    void setSimulatorEnabled(bool enabled);
+
+    void setSimulatorEnabled(
+        bool enabled
+        );
 
 public slots:
     void startSpectrum();
     void stopSpectrum();
     void openRtlDevice();
+
+    void setMode(
+        HFSDR::DemodulationMode mode
+        );
+
+    void setRxBandwidthHz(
+        int bandwidthHz
+        );
+
+    void setReceiverConfiguration(
+        const HFSDR::ReceiverConfiguration&
+            configuration
+        );
 
 signals:
     void statusChanged();
@@ -75,19 +95,29 @@ private:
     void createWorkers();
     void stopWorkers();
 
+    void publishConfiguration();
+
     QString m_status = "Idle";
     QVariantList m_spectrumBins;
 
     RTLDevice m_rtlDevice;
-    HFSDR::IQSource* m_activeSource = nullptr;
 
-    HFSDR::IQBlockRingBuffer m_iqRingBuffer;
+    HFSDR::IQSource*
+        m_activeSource = nullptr;
+
+    HFSDR::IQBlockRingBuffer
+        m_iqRingBuffer;
 
     QThread m_sourceThread;
-    IQSourceWorker* m_sourceWorker = nullptr;
+    IQSourceWorker*
+        m_sourceWorker = nullptr;
 
     QThread m_dspThread;
-    HFSDR::DSPWorker* m_dspWorker = nullptr;
+    HFSDR::DSPWorker*
+        m_dspWorker = nullptr;
+
+    HFSDR::ReceiverConfiguration
+        m_configuration;
 
     bool m_simulatorEnabled = false;
 };

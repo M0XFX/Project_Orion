@@ -1,36 +1,73 @@
 #include "DSPWorker.h"
 #include "Logger.h"
 
+#include <algorithm>
+
 namespace HFSDR
 {
 
 DSPWorker::DSPWorker(
     IQBlockRingBuffer* inputBuffer,
-    QObject* parent
-    )
+    QObject* parent)
     : QObject(parent),
     m_inputBuffer(inputBuffer),
     m_inputBlock(2048),
     m_displayBuffer(256),
     m_receiverBuffer(256)
 {
-    constexpr float inputSampleRate = 2048000.0f;
-    constexpr float frequencyShiftHz = 100000.0f;
+    constexpr float inputSampleRate =
+        2048000.0f;
 
-    m_displayDdc.setSampleRate(inputSampleRate);
-    m_displayDdc.setFrequencyShiftHz(
-        frequencyShiftHz
+    m_displayDdc.setSampleRate(
+        inputSampleRate
         );
 
-    m_receiverDdc.setSampleRate(inputSampleRate);
+    m_displayDdc.setFrequencyShiftHz(
+        m_baseFrequencyShiftHz
+        );
+
+    // The spectrum display shows most of the
+    // 256 kHz decimated output bandwidth.
+    m_displayDdc.setLowPassCutoffHz(
+        110000.0f
+        );
+
+    m_receiverDdc.setSampleRate(
+        inputSampleRate
+        );
+
     m_receiverDdc.setFrequencyShiftHz(
-        frequencyShiftHz
+        m_baseFrequencyShiftHz
+        );
+
+    // Initial AM channel:
+    // 10 kHz total RF bandwidth = ±5 kHz.
+    m_receiverDdc.setLowPassCutoffHz(
+        5000.0f
         );
 }
 
 bool DSPWorker::running() const
 {
     return m_running.load();
+}
+
+void DSPWorker::setConfiguration(
+    const ReceiverConfiguration& configuration)
+{
+    std::lock_guard<std::mutex> lock(
+        m_configurationMutex
+        );
+
+    if (m_pendingConfiguration ==
+        configuration) {
+        return;
+    }
+
+    m_pendingConfiguration =
+        configuration;
+
+    m_configurationDirty = true;
 }
 
 void DSPWorker::start()
@@ -48,13 +85,12 @@ void DSPWorker::start()
         return;
     }
 
-    HFSDR::Logger::info(
-        "DSP worker started."
-        );
+    Logger::info("DSP worker started.");
 
     if (!startAudio()) {
-        HFSDR::Logger::warning(
-            "DSP processing will continue without audio output."
+        Logger::warning(
+            "DSP processing will continue "
+            "without audio output."
             );
     }
 
@@ -66,6 +102,7 @@ void DSPWorker::start()
         if (!receiveNextBlock())
             break;
 
+        applyPendingConfiguration();
         processReceiverPath();
 
         if (spectrumUpdateDue()) {
@@ -78,9 +115,7 @@ void DSPWorker::start()
 
     m_running.store(false);
 
-    HFSDR::Logger::info(
-        "DSP worker stopped."
-        );
+    Logger::info("DSP worker stopped.");
 
     emit stopped();
 }
@@ -89,8 +124,6 @@ void DSPWorker::stop()
 {
     m_running.store(false);
 
-    // Wake waitAndPop() if DSPWorker is blocked waiting
-    // for another IQ block.
     if (m_inputBuffer)
         m_inputBuffer->stop();
 }
@@ -101,15 +134,92 @@ bool DSPWorker::receiveNextBlock()
         return false;
 
     const bool received =
-        m_inputBuffer->waitAndPop(m_inputBlock);
+        m_inputBuffer->waitAndPop(
+            m_inputBlock
+            );
 
     if (!received && m_running.load()) {
         emit errorOccurred(
-            "DSPWorker failed to receive an IQ block."
+            "DSPWorker failed to receive "
+            "an IQ block."
             );
     }
 
     return received;
+}
+
+void DSPWorker::applyPendingConfiguration()
+{
+    ReceiverConfiguration configuration;
+
+    {
+        std::lock_guard<std::mutex> lock(
+            m_configurationMutex
+            );
+
+        if (!m_configurationDirty)
+            return;
+
+        configuration =
+            m_pendingConfiguration;
+
+        m_configurationDirty = false;
+    }
+
+    m_receiverProcessor.setConfiguration(
+        configuration
+        );
+
+    m_receiverDdc.setFrequencyShiftHz(
+        m_baseFrequencyShiftHz +
+        static_cast<float>(
+            configuration.frequencyOffsetHz
+            )
+        );
+
+    // bandwidthHz is the complete RF channel width.
+    // A complex low-pass DDC therefore uses half
+    // that value as its positive-frequency cutoff.
+    float channelCutoffHz =
+        static_cast<float>(
+            configuration.bandwidthHz
+            ) * 0.5f;
+
+    channelCutoffHz = std::clamp(
+        channelCutoffHz,
+        100.0f,
+        110000.0f
+        );
+
+    m_receiverDdc.setLowPassCutoffHz(
+        channelCutoffHz
+        );
+
+    Logger::info(
+        QString(
+            "DSP configuration applied: "
+            "mode=%1, bandwidth=%2 Hz, "
+            "channel cutoff=%3 Hz, "
+            "offset=%4 Hz."
+            )
+            .arg(
+                demodulationModeToString(
+                    configuration.mode
+                    )
+                )
+            .arg(
+                configuration.bandwidthHz
+                )
+            .arg(
+                channelCutoffHz,
+                0,
+                'f',
+                0
+                )
+            .arg(
+                configuration.frequencyOffsetHz
+                )
+        );
 }
 
 void DSPWorker::processReceiverPath()
@@ -180,8 +290,6 @@ void DSPWorker::publishSpectrum()
 
 bool DSPWorker::startAudio()
 {
-    // AudioOutput must be created here because start()
-    // executes inside the DSP thread.
     m_audioOutput =
         std::make_unique<AudioOutput>();
 
@@ -190,7 +298,7 @@ bool DSPWorker::startAudio()
         return false;
     }
 
-    HFSDR::Logger::info(
+    Logger::info(
         "DSP audio output enabled."
         );
 
@@ -205,7 +313,7 @@ void DSPWorker::stopAudio()
     m_audioOutput->stop();
     m_audioOutput.reset();
 
-    HFSDR::Logger::info(
+    Logger::info(
         "DSP audio output stopped."
         );
 }

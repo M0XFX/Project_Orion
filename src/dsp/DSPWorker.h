@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "AudioOutput.h"
@@ -15,6 +16,7 @@
 #include "FFTProcessor.h"
 #include "IQBlockRingBuffer.h"
 #include "IQBuffer.h"
+#include "ReceiverConfiguration.h"
 
 namespace HFSDR
 {
@@ -30,6 +32,12 @@ public:
         );
 
     bool running() const;
+
+    // Thread-safe. Receiver may call this from
+    // Orion's GUI/control thread.
+    void setConfiguration(
+        const ReceiverConfiguration& configuration
+        );
 
 public slots:
     void start();
@@ -50,6 +58,7 @@ signals:
 private:
     bool receiveNextBlock();
 
+    void applyPendingConfiguration();
     void processReceiverPath();
     void processDisplayPath();
 
@@ -80,6 +89,16 @@ private:
 
     QElapsedTimer m_spectrumTimer;
     qint64 m_spectrumIntervalMs = 33;
+
+    mutable std::mutex m_configurationMutex;
+
+    ReceiverConfiguration
+        m_pendingConfiguration;
+
+    bool m_configurationDirty = true;
+
+    float m_baseFrequencyShiftHz =
+        100000.0f;
 };
 
 } // namespace HFSDR

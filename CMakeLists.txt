@@ -78,6 +78,8 @@ qt_add_qml_module(Project_Orion
         src/dsp/AGCProcessor.cpp
         src/dsp/AMDemodulator.h
         src/dsp/AMDemodulator.cpp
+        SOURCES src/dsp/DSBDemodulator.h
+        SOURCES src/dsp/DSBDemodulator.cpp
 
         src/audio/AudioDecimator.h
         src/audio/AudioDecimator.cpp
@@ -97,6 +99,9 @@ qt_add_qml_module(Project_Orion
         src/gui/Orion.cpp
         src/gui/Displaysettings.h
         src/gui/Displaysettings.cpp
+        SOURCES src/core/ReceiverConfiguration.h
+        SOURCES src/dsp/NFMDemodulator.h src/dsp/NFMDemodulator.cpp
+
 
 )
 

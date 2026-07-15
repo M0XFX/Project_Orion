@@ -180,10 +180,44 @@ void DSPWorker::applyPendingConfiguration()
     // bandwidthHz is the complete RF channel width.
     // A complex low-pass DDC therefore uses half
     // that value as its positive-frequency cutoff.
+    /*
     float channelCutoffHz =
         static_cast<float>(
             configuration.bandwidthHz
             ) * 0.5f;
+
+*/
+    float channelCutoffHz = 0.0f;
+
+    switch (configuration.mode) {
+    case DemodulationMode::USB:
+    case DemodulationMode::LSB:
+    case DemodulationMode::CW:
+        /*
+     * Keep a wider complex channel before
+     * DSPProcessor performs its own 32 kHz
+     * sideband selection.
+     */
+        channelCutoffHz = 12000.0f;
+        break;
+
+    case DemodulationMode::AM:
+    case DemodulationMode::DSB:
+    case DemodulationMode::NFM:
+    case DemodulationMode::WFM:
+        channelCutoffHz =
+            static_cast<float>(
+                configuration.bandwidthHz
+                ) * 0.5f;
+        break;
+    }
+
+    channelCutoffHz = std::clamp(
+        channelCutoffHz,
+        100.0f,
+        110000.0f
+        );
+
 
     channelCutoffHz = std::clamp(
         channelCutoffHz,

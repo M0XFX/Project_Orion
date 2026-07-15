@@ -103,6 +103,7 @@ qt_add_qml_module(Project_Orion
         SOURCES src/dsp/NFMDemodulator.h src/dsp/NFMDemodulator.cpp
         SOURCES src/dsp/WFMDemodulator.h src/dsp/WFMDemodulator.cpp
         SOURCES src/dsp/ProductDetector.h src/dsp/ProductDetector.cpp
+        SOURCES src/dsp/ComplexSidebandFilter.h src/dsp/ComplexSidebandFilter.cpp
 
 
 )

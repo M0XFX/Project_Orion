@@ -7,7 +7,10 @@
 #include "AMDemodulator.h"
 #include "AudioDecimator.h"
 #include "AudioFIRFilter.h"
+#include "ComplexSidebandFilter.h"
+#include "Decimator.h"
 #include "DSBDemodulator.h"
+#include "FIRFilter.h"
 #include "IQBuffer.h"
 #include "NFMDemodulator.h"
 #include "ProductDetector.h"
@@ -35,6 +38,12 @@ public:
 
 private:
     void configureAudioFilter();
+    void configureSidebandFilter();
+
+    void processSidebandMode(
+        const IQBuffer& input,
+        std::vector<float>& outputAudio
+        );
 
     ReceiverConfiguration m_configuration;
 
@@ -46,8 +55,20 @@ private:
     WFMDemodulator m_wfmDemodulator;
     ProductDetector m_productDetector;
 
+    // Reduces the SSB IQ rate from
+    // 256 kS/s to 32 kS/s.
+    FIRFilter m_ssbPreFilter;
+    Decimator m_ssbDecimator;
+
+    ComplexSidebandFilter
+        m_sidebandFilter;
+
     AudioFIRFilter m_audioFilter;
     AudioDecimator m_audioDecimator;
+
+    IQBuffer m_ssbPreFilteredIq;
+    IQBuffer m_ssbDecimatedIq;
+    IQBuffer m_sidebandFilteredIq;
 
     std::vector<float> m_demodulatedAudio;
     std::vector<float> m_filteredAudio;

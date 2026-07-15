@@ -7,7 +7,20 @@ namespace HFSDR
 
 DSPProcessor::DSPProcessor()
 {
+    // Normal AM/FM audio path:
+    // 256 kS/s to 32 kS/s.
     m_audioDecimator.setFactor(8);
+
+    // SSB complex-IQ path:
+    // 256 kS/s to 32 kS/s before applying
+    // the narrow complex sideband filter.
+    m_ssbPreFilter.setLowPass(
+        256000.0f,
+        12000.0f,
+        129
+        );
+
+    m_ssbDecimator.setFactor(8);
 
     m_wfmDemodulator.setSampleRate(
         256000.0f
@@ -17,15 +30,16 @@ DSPProcessor::DSPProcessor()
         75000.0f
         );
 
-    // European broadcast-FM de-emphasis.
-    m_wfmDemodulator.setDeEmphasisTimeConstant(
-        50.0e-6f
-        );
+    m_wfmDemodulator
+        .setDeEmphasisTimeConstant(
+            50.0e-6f
+            );
 
     m_productDetector.setMode(
         DemodulationMode::USB
         );
 
+    configureSidebandFilter();
     configureAudioFilter();
 }
 
@@ -60,6 +74,7 @@ void DSPProcessor::setConfiguration(
                 );
 
             m_productDetector.reset();
+            m_sidebandFilter.reset();
             break;
 
         case DemodulationMode::AM:
@@ -68,6 +83,7 @@ void DSPProcessor::setConfiguration(
         }
     }
 
+    configureSidebandFilter();
     configureAudioFilter();
 }
 
@@ -140,23 +156,18 @@ void DSPProcessor::process(
 
     case DemodulationMode::USB:
     case DemodulationMode::LSB:
-        m_productDetector.process(
+        processSidebandMode(
             demodulatorInput,
-            m_demodulatedAudio
+            outputAudio
             );
-        break;
+        return;
 
     case DemodulationMode::CW:
-        /*
-         * The product detector is ready, but CW
-         * requires an audio BFO pitch. Keep it silent
-         * until that NCO is added.
-         */
-        m_demodulatedAudio.assign(
-            input.size(),
+        outputAudio.assign(
+            input.size() / 8,
             0.0f
             );
-        break;
+        return;
     }
 
     m_audioFilter.process(
@@ -170,24 +181,98 @@ void DSPProcessor::process(
         );
 }
 
+void DSPProcessor::processSidebandMode(
+    const IQBuffer& input,
+    std::vector<float>& outputAudio)
+{
+    m_ssbPreFilter.process(
+        input,
+        m_ssbPreFilteredIq
+        );
+
+    m_ssbDecimator.process(
+        m_ssbPreFilteredIq,
+        m_ssbDecimatedIq
+        );
+
+    m_sidebandFilter.process(
+        m_ssbDecimatedIq,
+        m_sidebandFilteredIq
+        );
+
+    m_productDetector.process(
+        m_sidebandFilteredIq,
+        m_demodulatedAudio
+        );
+
+    // The sideband IQ is already at the final
+    // 32 kHz audio rate, so no further audio
+    // decimation is required.
+    m_audioFilter.process(
+        m_demodulatedAudio,
+        outputAudio
+        );
+}
+
+void DSPProcessor::configureSidebandFilter()
+{
+    constexpr float sidebandSampleRate =
+        32000.0f;
+
+    constexpr float lowAudioEdgeHz =
+        300.0f;
+
+    constexpr int tapCount = 257;
+
+    float wantedBandwidthHz =
+        static_cast<float>(
+            m_configuration.bandwidthHz
+            );
+
+    wantedBandwidthHz = std::clamp(
+        wantedBandwidthHz,
+        300.0f,
+        5000.0f
+        );
+
+    const float highAudioEdgeHz =
+        lowAudioEdgeHz +
+        wantedBandwidthHz;
+
+    if (m_configuration.mode ==
+        DemodulationMode::LSB) {
+
+        m_sidebandFilter.setBandPass(
+            sidebandSampleRate,
+            -highAudioEdgeHz,
+            -lowAudioEdgeHz,
+            tapCount
+            );
+    } else {
+        // USB is also the default preparation
+        // for the future CW path.
+        m_sidebandFilter.setBandPass(
+            sidebandSampleRate,
+            lowAudioEdgeHz,
+            highAudioEdgeHz,
+            tapCount
+            );
+    }
+}
+
 void DSPProcessor::configureAudioFilter()
 {
-    constexpr float inputAudioRate =
-        256000.0f;
-
     constexpr int tapCount = 101;
 
-    float audioCutoffHz = 5000.0f;
+    float inputAudioRate =
+        256000.0f;
+
+    float audioCutoffHz =
+        5000.0f;
 
     switch (m_configuration.mode) {
     case DemodulationMode::AM:
     case DemodulationMode::DSB:
-        audioCutoffHz =
-            static_cast<float>(
-                m_configuration.bandwidthHz
-                ) * 0.5f;
-        break;
-
     case DemodulationMode::NFM:
         audioCutoffHz =
             static_cast<float>(
@@ -201,18 +286,18 @@ void DSPProcessor::configureAudioFilter()
 
     case DemodulationMode::USB:
     case DemodulationMode::LSB:
-        /*
-         * SSB bandwidth is already specified as
-         * the wanted audio/channel width.
-         */
+        inputAudioRate = 32000.0f;
+
         audioCutoffHz =
+            300.0f +
             static_cast<float>(
                 m_configuration.bandwidthHz
                 );
         break;
 
     case DemodulationMode::CW:
-        audioCutoffHz = 1000.0f;
+        inputAudioRate = 32000.0f;
+        audioCutoffHz = 1200.0f;
         break;
     }
 

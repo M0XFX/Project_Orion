@@ -7,38 +7,100 @@ FFTProcessor::FFTProcessor()
 {
 }
 
-void FFTProcessor::process(const HFSDR::IQBuffer& input,
-                           std::vector<float>& outputDb)
+void FFTProcessor::process(
+    const HFSDR::IQBuffer& input,
+    std::vector<float>& outputDb)
 {
     const std::size_t n = input.size();
 
-    if (n == 0)
+    if (n < 2) {
+        outputDb.clear();
         return;
+    }
 
-    std::vector<std::complex<float>> data(input.samples().begin(),
-                                          input.samples().end());
+    std::vector<std::complex<float>> data(
+        input.samples().begin(),
+        input.samples().end()
+        );
 
-    applyHannWindow(data);
+    /*
+     * Calculate the coherent gain of the Hann window.
+     *
+     * A full-scale complex tone positioned exactly on
+     * an FFT bin should read approximately 0 dBFS after
+     * this correction.
+     */
+    constexpr float pi =
+        3.14159265358979323846f;
+
+    float windowSum = 0.0f;
+
+    for (std::size_t i = 0;
+         i < n;
+         ++i) {
+
+        const float window =
+            0.5f *
+            (
+                1.0f -
+                std::cos(
+                    2.0f *
+                    pi *
+                    static_cast<float>(i) /
+                    static_cast<float>(n - 1)
+                    )
+                );
+
+        data[i] *= window;
+        windowSum += window;
+    }
+
     fft(data);
 
-    outputDb.clear();
-    outputDb.reserve(n);
+    outputDb.resize(n);
 
-    // FFT shift: put negative frequencies on the left, positive on the right
-    const std::size_t half = n / 2;
+    const std::size_t half =
+        n / 2;
 
-    for (std::size_t i = 0; i < n; ++i) {
-        const std::size_t index = (i + half) % n;
+    const float normalisation =
+        windowSum > 0.0f
+            ? windowSum
+            : static_cast<float>(n);
 
-        const float real = data[index].real();
-        const float imag = data[index].imag();
+    constexpr float minimumMagnitude =
+        1.0e-12f;
 
-        const float power = real * real + imag * imag;
-        const float db = 10.0f * std::log10(power + 1.0e-12f);
+    for (std::size_t i = 0;
+         i < n;
+         ++i) {
 
-        outputDb.push_back(db);
+        /*
+         * FFT shift:
+         * negative frequencies appear on the left,
+         * positive frequencies on the right.
+         */
+        const std::size_t shiftedIndex =
+            (i + half) % n;
+
+        const float magnitude =
+            std::abs(
+                data[shiftedIndex]
+                ) /
+            normalisation;
+
+        outputDb[i] =
+            20.0f *
+            std::log10(
+                std::max(
+                    magnitude,
+                    minimumMagnitude
+                    )
+                );
     }
 }
+
+
+
 
 void FFTProcessor::applyHannWindow(std::vector<std::complex<float>>& data)
 {

@@ -10,8 +10,8 @@ Rectangle {
         anchors.fill: parent
         anchors.margins: 8
 
-        property real minDb: -100
-        property real maxDb: 40
+        property real minDb: -120
+        property real maxDb: 0
 
         property var peakBins: []
 
@@ -77,7 +77,8 @@ Rectangle {
 
                 for (var d = minDb; d <= maxDb; d += 20) {
                     var yy = dbToY(d)
-                    ctx.fillText(d + " dB", 8, yy - 3)
+                    //ctx.fillText(d + " dB", 8, yy - 3)
+                    ctx.fillText(d + " dBFS", 8, yy - 3)
                 }
             }
 

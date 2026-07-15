@@ -2,18 +2,19 @@
 #include "Logger.h"
 
 #include <rtl-sdr.h>
+
 #include <vector>
 
 RTLDevice::RTLDevice(QObject* parent)
     : QObject(parent)
 {
-    HFSDR::Logger::info("RTLDevice created.");
+    HFSDR::Logger::info(
+        "RTLDevice created."
+        );
 }
 
 RTLDevice::~RTLDevice()
 {
-    // Do not call the virtual close() method from the destructor.
-    // Perform the hardware cleanup directly instead.
     if (m_device) {
         HFSDR::Logger::info(
             "Closing RTL-SDR device during shutdown."
@@ -45,12 +46,78 @@ quint32 RTLDevice::sampleRate() const
     return m_sampleRate;
 }
 
+HFSDR::IQSourceCapabilities
+RTLDevice::capabilities() const
+{
+    HFSDR::IQSourceCapabilities capabilities;
+
+    capabilities.deviceName =
+        "RTL-SDR";
+
+    capabilities.manufacturer =
+        "Generic RTL2832U";
+
+    capabilities.sampleRateHz =
+        m_sampleRate;
+
+    /*
+     * A complex IQ stream theoretically represents
+     * a bandwidth equal to its sample rate.
+     */
+    capabilities.maximumBandwidthHz =
+        m_sampleRate;
+
+    /*
+     * Avoid displaying the outermost portion of the
+     * RTL passband where response may be less flat.
+     *
+     * At 2.048 MS/s this reports approximately
+     * 1.8 MHz of usable display bandwidth.
+     */
+    capabilities.usableBandwidthHz =
+        static_cast<quint32>(
+            static_cast<double>(m_sampleRate) *
+            0.88
+            );
+
+    capabilities.defaultSpectrumSpanHz =
+        capabilities.usableBandwidthHz;
+
+    capabilities.supportedSpectrumSpansHz = {
+        10000,
+        25000,
+        50000,
+        100000,
+        250000,
+        500000,
+        1000000,
+        capabilities.usableBandwidthHz
+    };
+
+    capabilities.supportsAutomaticGain = true;
+    capabilities.supportsManualGain = true;
+    capabilities.supportsDirectSampling = true;
+
+    // Leave this false until Orion explicitly
+    // implements RTL bias-tee control.
+    capabilities.supportsBiasTee = false;
+
+    capabilities.supportsTransmit = false;
+    capabilities.supportsFullDuplex = false;
+
+    capabilities.receiveChannelCount = 1;
+    capabilities.transmitChannelCount = 0;
+
+    return capabilities;
+}
+
 void RTLDevice::open()
 {
     if (m_device) {
         HFSDR::Logger::warning(
             "RTL-SDR device is already open."
             );
+
         return;
     }
 
@@ -75,7 +142,9 @@ void RTLDevice::open()
     const int openResult =
         rtlsdr_open(&m_device, 0);
 
-    if (openResult != 0 || m_device == nullptr) {
+    if (openResult != 0 ||
+        m_device == nullptr) {
+
         m_device = nullptr;
 
         setConnected(false);
@@ -139,9 +208,20 @@ void RTLDevice::open()
             );
     }
 
+    const auto sourceCapabilities =
+        capabilities();
+
     HFSDR::Logger::info(
         QString("RTL-SDR sample rate: %1")
             .arg(m_sampleRate)
+        );
+
+    HFSDR::Logger::info(
+        QString(
+            "RTL-SDR usable spectrum bandwidth: %1 Hz"
+            ).arg(
+                sourceCapabilities.usableBandwidthHz
+                )
         );
 
     HFSDR::Logger::info(
@@ -183,13 +263,17 @@ bool RTLDevice::readSamples(
     }
 
     const int sampleCount =
-        static_cast<int>(buffer.size());
+        static_cast<int>(
+            buffer.size()
+            );
 
     const int byteCount =
         sampleCount * 2;
 
     std::vector<unsigned char> raw(
-        static_cast<std::size_t>(byteCount)
+        static_cast<std::size_t>(
+            byteCount
+            )
         );
 
     int bytesRead = 0;
@@ -217,25 +301,40 @@ bool RTLDevice::readSamples(
         return false;
     }
 
-    for (int i = 0; i < sampleCount; ++i) {
+    for (int i = 0;
+         i < sampleCount;
+         ++i) {
+
         const std::size_t byteIndex =
-            static_cast<std::size_t>(i * 2);
+            static_cast<std::size_t>(
+                i * 2
+                );
 
         const float iSample =
-            (static_cast<float>(raw[byteIndex])
-             - 127.5f) / 127.5f;
+            (
+                static_cast<float>(
+                    raw[byteIndex]
+                    ) -
+                127.5f
+                ) /
+            127.5f;
 
         const float qSample =
-            (static_cast<float>(
-                 raw[byteIndex + 1])
-             - 127.5f) / 127.5f;
+            (
+                static_cast<float>(
+                    raw[byteIndex + 1]
+                    ) -
+                127.5f
+                ) /
+            127.5f;
 
         buffer.samples()[
             static_cast<std::size_t>(i)
-        ] = HFSDR::IQBuffer::Sample(
-            iSample,
-            qSample
-            );
+        ] =
+            HFSDR::IQBuffer::Sample(
+                iSample,
+                qSample
+                );
     }
 
     return true;

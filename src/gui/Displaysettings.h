@@ -2,24 +2,93 @@
 #define DISPLAYSETTINGS_H
 
 #include <QObject>
+#include <QtGlobal>
 
 class DisplaySettings : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY(bool peakHold READ peakHold WRITE setPeakHold NOTIFY peakHoldChanged)
-    Q_PROPERTY(bool gridEnabled READ gridEnabled WRITE setGridEnabled NOTIFY gridEnabledChanged)
-    Q_PROPERTY(bool centerLineEnabled READ centerLineEnabled WRITE setCenterLineEnabled NOTIFY centerLineEnabledChanged)
-    Q_PROPERTY(bool waterfallEnabled READ waterfallEnabled WRITE setWaterfallEnabled NOTIFY waterfallEnabledChanged)
-    Q_PROPERTY(bool spectrumFillEnabled READ spectrumFillEnabled WRITE setSpectrumFillEnabled NOTIFY spectrumFillEnabledChanged)
-    Q_PROPERTY(bool averageEnabled READ averageEnabled WRITE setAverageEnabled NOTIFY averageEnabledChanged)
-    Q_PROPERTY(bool autoScale READ autoScale WRITE setAutoScale NOTIFY autoScaleChanged)
-    Q_PROPERTY(bool showDbScale READ showDbScale WRITE setShowDbScale NOTIFY showDbScaleChanged)
-    Q_PROPERTY(bool showFrequencyScale READ showFrequencyScale WRITE setShowFrequencyScale NOTIFY showFrequencyScaleChanged)
-    Q_PROPERTY(bool showMarkers READ showMarkers WRITE setShowMarkers NOTIFY showMarkersChanged)
+    Q_PROPERTY(
+        bool peakHold
+            READ peakHold
+                WRITE setPeakHold
+                    NOTIFY peakHoldChanged
+        )
+
+    Q_PROPERTY(
+        bool gridEnabled
+            READ gridEnabled
+                WRITE setGridEnabled
+                    NOTIFY gridEnabledChanged
+        )
+
+    Q_PROPERTY(
+        bool centerLineEnabled
+            READ centerLineEnabled
+                WRITE setCenterLineEnabled
+                    NOTIFY centerLineEnabledChanged
+        )
+
+    Q_PROPERTY(
+        bool waterfallEnabled
+            READ waterfallEnabled
+                WRITE setWaterfallEnabled
+                    NOTIFY waterfallEnabledChanged
+        )
+
+    Q_PROPERTY(
+        bool spectrumFillEnabled
+            READ spectrumFillEnabled
+                WRITE setSpectrumFillEnabled
+                    NOTIFY spectrumFillEnabledChanged
+        )
+
+    Q_PROPERTY(
+        bool averageEnabled
+            READ averageEnabled
+                WRITE setAverageEnabled
+                    NOTIFY averageEnabledChanged
+        )
+
+    Q_PROPERTY(
+        bool autoScale
+            READ autoScale
+                WRITE setAutoScale
+                    NOTIFY autoScaleChanged
+        )
+
+    Q_PROPERTY(
+        bool showDbScale
+            READ showDbScale
+                WRITE setShowDbScale
+                    NOTIFY showDbScaleChanged
+        )
+
+    Q_PROPERTY(
+        bool showFrequencyScale
+            READ showFrequencyScale
+                WRITE setShowFrequencyScale
+                    NOTIFY showFrequencyScaleChanged
+        )
+
+    Q_PROPERTY(
+        bool showMarkers
+            READ showMarkers
+                WRITE setShowMarkers
+                    NOTIFY showMarkersChanged
+        )
+
+    Q_PROPERTY(
+        quint32 spectrumSpanHz
+            READ spectrumSpanHz
+                WRITE setSpectrumSpanHz
+                    NOTIFY spectrumSpanHzChanged
+        )
 
 public:
-    explicit DisplaySettings(QObject *parent = nullptr);
+    explicit DisplaySettings(
+        QObject* parent = nullptr
+        );
 
     bool peakHold() const;
     bool gridEnabled() const;
@@ -32,6 +101,8 @@ public:
     bool showFrequencyScale() const;
     bool showMarkers() const;
 
+    quint32 spectrumSpanHz() const;
+
     void setPeakHold(bool enabled);
     void setGridEnabled(bool enabled);
     void setCenterLineEnabled(bool enabled);
@@ -42,6 +113,10 @@ public:
     void setShowDbScale(bool enabled);
     void setShowFrequencyScale(bool enabled);
     void setShowMarkers(bool enabled);
+
+    void setSpectrumSpanHz(
+        quint32 spanHz
+        );
 
 signals:
     void peakHoldChanged();
@@ -55,6 +130,8 @@ signals:
     void showFrequencyScaleChanged();
     void showMarkersChanged();
 
+    void spectrumSpanHzChanged();
+
 private:
     bool m_peakHold = true;
     bool m_gridEnabled = true;
@@ -66,6 +143,8 @@ private:
     bool m_showDbScale = true;
     bool m_showFrequencyScale = false;
     bool m_showMarkers = false;
+
+    quint32 m_spectrumSpanHz = 250000;
 };
 
 #endif

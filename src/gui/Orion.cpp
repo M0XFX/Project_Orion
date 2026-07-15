@@ -59,7 +59,37 @@ Orion::Orion(QObject* parent)
     Logger::info(
         "Display settings initialised."
     );
+
+
+    setSpectrumSpanHz(500000);
+
 }
+
+quint32 Orion::spectrumSpanHz() const
+{
+    return m_spectrumSpanHz;
+}
+
+void Orion::setSpectrumSpanHz(
+    quint32 spanHz)
+{
+    if (m_spectrumSpanHz == spanHz)
+        return;
+
+    m_spectrumSpanHz = spanHz;
+
+    Logger::info(
+        QString(
+            "Spectrum span set to %1 Hz."
+            ).arg(spanHz)
+        );
+
+    emit spectrumSpanHzChanged(
+        spanHz
+        );
+}
+
+
 
 QObject* Orion::radio()
 {

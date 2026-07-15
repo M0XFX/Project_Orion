@@ -59,6 +59,20 @@ public:
         int bandwidthHz
         );
 
+    Q_PROPERTY(
+        quint32 spectrumSpanHz
+            READ spectrumSpanHz
+                WRITE setSpectrumSpanHz
+                    NOTIFY spectrumSpanHzChanged
+        )
+
+    quint32 spectrumSpanHz() const;
+
+    Q_INVOKABLE void setSpectrumSpanHz(
+        quint32 spanHz
+        );
+
+
 signals:
     void modeCommanded(
         HFSDR::DemodulationMode mode
@@ -71,11 +85,15 @@ signals:
     void rxBandwidthCommanded(
         int bandwidthHz
         );
+    void spectrumSpanHzChanged(
+        quint32 spanHz
+        );
 
 private:
     Radio m_radio;
     Receiver m_receiver;
     DisplaySettings m_displaySettings;
+    quint32 m_spectrumSpanHz = 250000;
 };
 
 } // namespace HFSDR

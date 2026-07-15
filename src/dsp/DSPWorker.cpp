@@ -240,13 +240,6 @@ void DSPWorker::applyPendingConfiguration()
         110000.0f
         );
 
-
-    channelCutoffHz = std::clamp(
-        channelCutoffHz,
-        100.0f,
-        110000.0f
-        );
-
     m_receiverDdc.setLowPassCutoffHz(
         channelCutoffHz
         );
@@ -296,13 +289,92 @@ void DSPWorker::applyPendingSpectrumSpan()
         m_spectrumSpanDirty = false;
     }
 
+    /*
+     * Select a practical Display DDC decimation factor.
+     *
+     * The DDC output sample rate becomes the actual
+     * spectrum width currently shown by the FFT.
+     *
+     * With the RTL-SDR at 2.048 MS/s:
+     *
+     *   Decimation 1  = 2.048 MHz span
+     *   Decimation 2  = 1.024 MHz span
+     *   Decimation 4  = 512 kHz span
+     *   Decimation 8  = 256 kHz span
+     *   Decimation 16 = 128 kHz span
+     */
+
+    const float sourceSampleRateHz =
+        m_displayDdc.sampleRate();
+
+    int decimationFactor = 1;
+
+    if (requestedSpanHz <= 100000) {
+        decimationFactor = 16;
+    } else if (requestedSpanHz <= 250000) {
+        decimationFactor = 8;
+    } else if (requestedSpanHz <= 500000) {
+        decimationFactor = 4;
+    } else if (requestedSpanHz <= 1000000) {
+        decimationFactor = 2;
+    } else {
+        decimationFactor = 1;
+    }
+
+    m_displayDdc.setDecimationFactor(
+        decimationFactor
+        );
+
+    const float displaySampleRateHz =
+        m_displayDdc.outputSampleRate();
+
+    /*
+     * Keep the anti-alias filter slightly inside the
+     * output Nyquist limit.
+     *
+     * A complex output stream represents a total span
+     * approximately equal to its sample rate.
+     */
+    const float displayCutoffHz =
+        displaySampleRateHz * 0.45f;
+
+    m_displayDdc.setLowPassCutoffHz(
+        displayCutoffHz
+        );
+
+    /*
+     * Until FFT cropping is added, the actual visible
+     * span equals the Display DDC output sample rate.
+     */
     m_spectrumSpanHz =
-        requestedSpanHz;
+        static_cast<int>(
+            displaySampleRateHz
+            );
 
     Logger::info(
         QString(
-            "DSP spectrum span command received: %1 Hz."
-            ).arg(m_spectrumSpanHz)
+            "Display spectrum configured: "
+            "requested=%1 Hz, "
+            "source rate=%2 Hz, "
+            "decimation=%3, "
+            "applied span=%4 Hz, "
+            "filter cutoff=%5 Hz."
+            )
+            .arg(requestedSpanHz)
+            .arg(
+                sourceSampleRateHz,
+                0,
+                'f',
+                0
+                )
+            .arg(decimationFactor)
+            .arg(m_spectrumSpanHz)
+            .arg(
+                displayCutoffHz,
+                0,
+                'f',
+                0
+                )
         );
 }
 

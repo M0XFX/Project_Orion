@@ -68,7 +68,11 @@ Orion::Orion(QObject* parent)
     );
 
 
-    setSpectrumSpanHz(500000);
+    //setSpectrumSpanHz(500000);
+
+    setSpectrumSpanHz(18000000);
+
+
 
 }
 

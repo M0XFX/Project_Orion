@@ -80,6 +80,9 @@ public slots:
         const HFSDR::ReceiverConfiguration&
             configuration
         );
+    void setSpectrumSpanHz(
+        int spanHz
+        );
 
 signals:
     void statusChanged();
@@ -115,6 +118,8 @@ private:
     QThread m_dspThread;
     HFSDR::DSPWorker*
         m_dspWorker = nullptr;
+
+    int m_spectrumSpanHz = 250000;
 
     HFSDR::ReceiverConfiguration
         m_configuration;

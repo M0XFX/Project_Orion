@@ -70,6 +70,26 @@ void DSPWorker::setConfiguration(
     m_configurationDirty = true;
 }
 
+void DSPWorker::setSpectrumSpanHz(
+    int spanHz)
+{
+    if (spanHz < 10000)
+        spanHz = 10000;
+
+    std::lock_guard<std::mutex> lock(
+        m_spectrumSpanMutex
+        );
+
+    if (m_pendingSpectrumSpanHz ==
+        spanHz) {
+        return;
+    }
+
+    m_pendingSpectrumSpanHz = spanHz;
+    m_spectrumSpanDirty = true;
+}
+
+
 void DSPWorker::start()
 {
     if (m_running.exchange(true))
@@ -103,6 +123,8 @@ void DSPWorker::start()
             break;
 
         applyPendingConfiguration();
+        applyPendingSpectrumSpan();
+
         processReceiverPath();
 
         if (spectrumUpdateDue()) {
@@ -255,6 +277,37 @@ void DSPWorker::applyPendingConfiguration()
                 )
         );
 }
+
+void DSPWorker::applyPendingSpectrumSpan()
+{
+    int requestedSpanHz = 0;
+
+    {
+        std::lock_guard<std::mutex> lock(
+            m_spectrumSpanMutex
+            );
+
+        if (!m_spectrumSpanDirty)
+            return;
+
+        requestedSpanHz =
+            m_pendingSpectrumSpanHz;
+
+        m_spectrumSpanDirty = false;
+    }
+
+    m_spectrumSpanHz =
+        requestedSpanHz;
+
+    Logger::info(
+        QString(
+            "DSP spectrum span command received: %1 Hz."
+            ).arg(m_spectrumSpanHz)
+        );
+}
+
+
+
 
 void DSPWorker::processReceiverPath()
 {

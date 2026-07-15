@@ -31,6 +31,13 @@ Orion::Orion(QObject* parent)
         &Receiver::setRxBandwidthHz
     );
 
+    connect(
+        this,
+        &Orion::spectrumSpanHzChanged,
+        &m_receiver,
+        &Receiver::setSpectrumSpanHz
+        );
+
     setFrequencyHz(28400000);
 
     /*

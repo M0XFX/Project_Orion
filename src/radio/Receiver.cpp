@@ -60,6 +60,11 @@ void Receiver::createWorkers()
             &m_iqRingBuffer
             );
 
+    m_dspWorker->setSpectrumSpanHz(
+        m_spectrumSpanHz
+        );
+
+
     m_dspWorker->moveToThread(
         &m_dspThread
         );
@@ -230,6 +235,39 @@ void Receiver::setRxBandwidthHz(
 
     publishConfiguration();
 }
+
+void Receiver::setSpectrumSpanHz(
+    int spanHz)
+{
+    if (spanHz < 10000)
+        spanHz = 10000;
+
+    if (m_spectrumSpanHz == spanHz)
+        return;
+
+    m_spectrumSpanHz = spanHz;
+
+    if (m_dspWorker) {
+        m_dspWorker->setSpectrumSpanHz(
+            m_spectrumSpanHz
+            );
+    }
+
+    HFSDR::Logger::info(
+        QString(
+            "Receiver spectrum span set to %1 Hz."
+            ).arg(m_spectrumSpanHz)
+        );
+}
+
+
+
+
+
+
+
+
+
 
 void Receiver::setReceiverConfiguration(
     const HFSDR::ReceiverConfiguration&

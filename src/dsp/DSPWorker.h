@@ -39,6 +39,12 @@ public:
         const ReceiverConfiguration& configuration
         );
 
+    void setSpectrumSpanHz(
+        int spanHz
+        );
+
+
+
 public slots:
     void start();
     void stop();
@@ -59,6 +65,7 @@ private:
     bool receiveNextBlock();
 
     void applyPendingConfiguration();
+    void applyPendingSpectrumSpan();
     void processReceiverPath();
     void processDisplayPath();
 
@@ -96,6 +103,18 @@ private:
         m_pendingConfiguration;
 
     bool m_configurationDirty = true;
+
+    mutable std::mutex
+        m_spectrumSpanMutex;
+
+    int m_pendingSpectrumSpanHz =
+        250000;
+
+    int m_spectrumSpanHz =
+        250000;
+
+    bool m_spectrumSpanDirty =
+        true;
 
     float m_baseFrequencyShiftHz =
         100000.0f;

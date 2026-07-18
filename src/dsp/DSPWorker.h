@@ -116,8 +116,14 @@ private:
     bool m_spectrumSpanDirty =
         true;
 
-    float m_baseFrequencyShiftHz =
-        100000.0f;
+    //float m_baseFrequencyShiftHz =
+        //100000.0f;
+    float m_baseFrequencyShiftHz = 0.0f;
+
+
+
+
+
 };
 
 } // namespace HFSDR

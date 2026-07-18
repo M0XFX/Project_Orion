@@ -41,6 +41,7 @@ DSPWorker::DSPWorker(
  * 0.20 = Medium
  * 0.08 = Slow
  */
+
     m_fftProcessor.setAveragingAlpha(
         0.20f
         );

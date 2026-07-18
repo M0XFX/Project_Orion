@@ -84,7 +84,7 @@ private:
     bool m_connected = false;
 
     // Normal Project Orion fixed-IF setting.
-    quint64 m_centerFrequencyHz = 60000000;
+    quint64 m_centerFrequencyHz = 103600000;
 
     quint32 m_sampleRate = 2048000;
 

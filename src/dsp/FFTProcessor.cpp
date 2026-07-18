@@ -23,7 +23,6 @@ void FFTProcessor::setAveragingAlpha(
      * 0.08 = slow
      *
      * Restart averaging whenever the setting changes.
-     * The next FFT frame becomes the initial reference.
      */
     m_averagingInitialised = false;
 }
@@ -45,10 +44,12 @@ void FFTProcessor::process(
         );
 
     /*
-     * Hann-window coherent-gain correction.
+     * Apply a Hann window and calculate its coherent
+     * gain at the same time.
      *
-     * A full-scale complex tone positioned exactly
-     * on an FFT bin should read approximately 0 dBFS.
+     * Dividing by the window sum makes a full-scale
+     * complex tone positioned exactly on an FFT bin
+     * read approximately 0 dBFS.
      */
     constexpr float pi =
         3.14159265358979323846f;
@@ -77,11 +78,6 @@ void FFTProcessor::process(
 
     fft(data);
 
-    std::vector<float> currentSpectrum(
-        n,
-        -240.0f
-        );
-
     const std::size_t half =
         n / 2;
 
@@ -90,49 +86,54 @@ void FFTProcessor::process(
             ? windowSum
             : static_cast<float>(n);
 
-    constexpr float minimumMagnitude =
-        1.0e-12f;
+    const float powerNormalisation =
+        normalisation *
+        normalisation;
+
+    constexpr float minimumPower =
+        1.0e-24f;
+
+    std::vector<float> currentPower(
+        n,
+        minimumPower
+        );
 
     for (std::size_t i = 0;
          i < n;
          ++i) {
 
-        /*
-         * FFT shift:
-         * negative frequencies on the left,
-         * positive frequencies on the right.
-         */
         const std::size_t shiftedIndex =
             (i + half) % n;
 
-        const float magnitude =
-            std::abs(
-                data[shiftedIndex]
-                ) /
-            normalisation;
+        const float real =
+            data[shiftedIndex].real();
 
-        currentSpectrum[i] =
-            20.0f *
-            std::log10(
-                std::max(
-                    magnitude,
-                    minimumMagnitude
-                    )
+        const float imaginary =
+            data[shiftedIndex].imag();
+
+        const float rawPower =
+            real * real +
+            imaginary * imaginary;
+
+        currentPower[i] =
+            std::max(
+                rawPower /
+                    powerNormalisation,
+                minimumPower
                 );
     }
 
     /*
-     * Restart averaging when:
-     *
-     * - averaging has just been enabled or changed;
-     * - the FFT size changes because the spectrum
-     *   span or Display DDC decimation changed.
+     * Average linear power rather than logarithmic
+     * dB values. This preserves the physical meaning
+     * of the measurement and supports later dBm and
+     * S-unit calibration.
      */
     if (!m_averagingInitialised ||
-        m_averagedSpectrum.size() != n) {
+        m_averagedPower.size() != n) {
 
-        m_averagedSpectrum =
-            currentSpectrum;
+        m_averagedPower =
+            currentPower;
 
         m_averagingInitialised =
             true;
@@ -145,16 +146,29 @@ void FFTProcessor::process(
              i < n;
              ++i) {
 
-            m_averagedSpectrum[i] =
+            m_averagedPower[i] =
                 m_averagingAlpha *
-                    currentSpectrum[i] +
+                    currentPower[i] +
                 previousWeight *
-                    m_averagedSpectrum[i];
+                    m_averagedPower[i];
         }
     }
 
-    outputDb =
-        m_averagedSpectrum;
+    outputDb.resize(n);
+
+    for (std::size_t i = 0;
+         i < n;
+         ++i) {
+
+        outputDb[i] =
+            10.0f *
+            std::log10(
+                std::max(
+                    m_averagedPower[i],
+                    minimumPower
+                    )
+                );
+    }
 }
 
 void FFTProcessor::applyHannWindow(
@@ -196,9 +210,6 @@ void FFTProcessor::fft(
     if (n <= 1)
         return;
 
-    /*
-     * Bit-reversal permutation.
-     */
     std::size_t j = 0;
 
     for (std::size_t i = 1;
@@ -215,11 +226,12 @@ void FFTProcessor::fft(
 
         j ^= bit;
 
-        if (i < j)
+        if (i < j) {
             std::swap(
                 data[i],
                 data[j]
                 );
+        }
     }
 
     constexpr float pi =

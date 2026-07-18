@@ -45,14 +45,14 @@ Orion::Orion(QObject* parent)
     setRxBandwidthHz(1250);
     */
 
-/*
+
     setMode(DemodulationMode::WFM);
     setRxBandwidthHz(180000);
 
-*/
 
-    setMode(DemodulationMode::USB);
-    setRxBandwidthHz(3000);
+
+   // setMode(DemodulationMode::USB);
+    //setRxBandwidthHz(3000);
 
 
 

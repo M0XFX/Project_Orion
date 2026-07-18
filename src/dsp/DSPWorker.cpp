@@ -28,8 +28,21 @@ DSPWorker::DSPWorker(
 
     // The spectrum display shows most of the
     // 256 kHz decimated output bandwidth.
+
     m_displayDdc.setLowPassCutoffHz(
         110000.0f
+        );
+
+    /*
+ * Medium FFT averaging.
+ *
+ * 1.00 = Off
+ * 0.40 = Fast
+ * 0.20 = Medium
+ * 0.08 = Slow
+ */
+    m_fftProcessor.setAveragingAlpha(
+        0.20f
         );
 
     m_receiverDdc.setSampleRate(

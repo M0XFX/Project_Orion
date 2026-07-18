@@ -1,11 +1,11 @@
 #include "Receiver.h"
 #include "Logger.h"
 
-Receiver::Receiver(QObject* parent)
+Receiver::Receiver(HFSDR::IQSource* activeSource, QObject* parent)
     : QObject(parent),
-    m_iqRingBuffer(64)
+      m_activeSource(activeSource),
+      m_iqRingBuffer(64)
 {
-    m_activeSource = &m_rtlDevice;
 
     createWorkers();
     publishConfiguration();
@@ -18,6 +18,8 @@ Receiver::Receiver(QObject* parent)
 Receiver::~Receiver()
 {
     stopWorkers();
+    if (m_activeSource)
+        m_activeSource->close();
 }
 
 void Receiver::createWorkers()
@@ -148,11 +150,6 @@ QVariantList Receiver::spectrumBins() const
     return m_spectrumBins;
 }
 
-QObject* Receiver::rtlDevice()
-{
-    return &m_rtlDevice;
-}
-
 bool Receiver::simulatorEnabled() const
 {
     return m_simulatorEnabled;
@@ -181,13 +178,20 @@ void Receiver::stopSpectrum()
     emit spectrumBinsChanged();
 }
 
-void Receiver::openRtlDevice()
+bool Receiver::openActiveSource()
 {
-    m_rtlDevice.open();
-    setStatus(m_rtlDevice.status());
+    if (!m_activeSource) {
+        setStatus("No SDR Selected");
+        return false;
+    }
 
-    if (!m_rtlDevice.connected())
-        return;
+    m_activeSource->open();
+    if (!m_activeSource->connected()) {
+        setStatus("SDR Open Failed");
+        return false;
+    }
+
+    setStatus("SDR Connected");
 
     if (!m_dspThread.isRunning()) {
         HFSDR::Logger::info(
@@ -204,6 +208,31 @@ void Receiver::openRtlDevice()
 
         m_sourceThread.start();
     }
+
+    return true;
+}
+
+HFSDR::IQSource* Receiver::activeSource()
+{
+    return m_activeSource;
+}
+
+bool Receiver::setCenterFrequencyHz(quint64 frequencyHz)
+{
+    return m_activeSource &&
+        m_activeSource->setCenterFrequencyHz(frequencyHz);
+}
+
+bool Receiver::setAutomaticGain(bool enabled)
+{
+    return m_activeSource &&
+        m_activeSource->setAutomaticGain(enabled);
+}
+
+bool Receiver::setRfGainDb(double gainDb)
+{
+    return m_activeSource &&
+        m_activeSource->setGainDb(gainDb);
 }
 
 void Receiver::setMode(

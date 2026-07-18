@@ -53,6 +53,7 @@ qt_add_qml_module(Project_Orion
         src/core/Logger.h
         src/core/Logger.cpp
         src/core/Version.h
+        src/core/RadioTypes.h
 
         src/sources/IQSource.h
         src/sources/IQSource.cpp
@@ -60,6 +61,8 @@ qt_add_qml_module(Project_Orion
         src/sources/IQSourceWorker.cpp
         src/sources/RTLDevice.h
         src/sources/RTLDevice.cpp
+        src/sources/SDRManager.h
+        src/sources/SDRManager.cpp
         src/sources/SignalGenerator.h
         src/sources/SignalGenerator.cpp
 
@@ -78,8 +81,8 @@ qt_add_qml_module(Project_Orion
         src/dsp/AGCProcessor.cpp
         src/dsp/AMDemodulator.h
         src/dsp/AMDemodulator.cpp
-        SOURCES src/dsp/DSBDemodulator.h
-        SOURCES src/dsp/DSBDemodulator.cpp
+        src/dsp/DSBDemodulator.h
+        src/dsp/DSBDemodulator.cpp
 
         src/audio/AudioDecimator.h
         src/audio/AudioDecimator.cpp
@@ -90,6 +93,8 @@ qt_add_qml_module(Project_Orion
 
         src/radio/Radio.h
         src/radio/Radio.cpp
+        src/radio/RadioController.h
+        src/radio/RadioController.cpp
         src/radio/Receiver.h
         src/radio/Receiver.cpp
         src/radio/vfo.h
@@ -99,12 +104,16 @@ qt_add_qml_module(Project_Orion
         src/gui/Orion.cpp
         src/gui/Displaysettings.h
         src/gui/Displaysettings.cpp
-        SOURCES src/core/ReceiverConfiguration.h
-        SOURCES src/dsp/NFMDemodulator.h src/dsp/NFMDemodulator.cpp
-        SOURCES src/dsp/WFMDemodulator.h src/dsp/WFMDemodulator.cpp
-        SOURCES src/dsp/ProductDetector.h src/dsp/ProductDetector.cpp
-        SOURCES src/dsp/ComplexSidebandFilter.h src/dsp/ComplexSidebandFilter.cpp
-        SOURCES src/core/IQSourceCapabilities.h
+        src/core/ReceiverConfiguration.h
+        src/dsp/NFMDemodulator.h
+        src/dsp/NFMDemodulator.cpp
+        src/dsp/WFMDemodulator.h
+        src/dsp/WFMDemodulator.cpp
+        src/dsp/ProductDetector.h
+        src/dsp/ProductDetector.cpp
+        src/dsp/ComplexSidebandFilter.h
+        src/dsp/ComplexSidebandFilter.cpp
+        src/core/IQSourceCapabilities.h
 
 
 )

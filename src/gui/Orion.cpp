@@ -1,201 +1,92 @@
 #include "Orion.h"
-
 #include "Logger.h"
 #include "Version.h"
 
-#include <QString>
-
 namespace HFSDR
 {
-
 Orion::Orion(QObject* parent)
-    : QObject(parent)
+    : QObject(parent),
+      m_radio(),
+      m_sdrManager(),
+      m_receiver(m_sdrManager.activeSource()),
+      m_radioController(&m_radio, &m_receiver, &m_sdrManager),
+      m_displaySettings()
 {
-    Logger::info(
-        QString("Project Orion v%1 starting...")
-            .arg(ORION_VERSION_STRING)
-    );
+    Logger::info(QString("Project Orion v%1 starting...").arg(ORION_VERSION_STRING));
 
-    // All control commands pass through Orion.
-    connect(
-        this,
-        &Orion::modeCommanded,
-        &m_receiver,
-        &Receiver::setMode
-    );
-
-    connect(
-        this,
-        &Orion::rxBandwidthCommanded,
-        &m_receiver,
-        &Receiver::setRxBandwidthHz
-    );
-
-    connect(
-        this,
-        &Orion::spectrumSpanHzChanged,
-        &m_receiver,
-        &Receiver::setSpectrumSpanHz
-        );
-
-    setFrequencyHz(28400000);
-
-    /*
-    setMode(DemodulationMode::NFM);
-    setRxBandwidthHz(1250);
-    */
-
-
+    // Central test configuration. No GUI controls are required yet.
+    setSdrType(SDRType::RTLSDR);
+    setFrequencyHz(103600000); // IF Frequency
     setMode(DemodulationMode::WFM);
     setRxBandwidthHz(180000);
+    setSpectrumSpanHz(1800000);
 
-
-
-   // setMode(DemodulationMode::USB);
-    //setRxBandwidthHz(3000);
-
-
-
-    Logger::info("Radio initialised.");
-
-    m_receiver.startSpectrum();
-    m_receiver.openRtlDevice();
+    // Change these two lines to test RTL tuner gain.
+    setAutomaticRfGain(false);
+    setRfGainDb(28.0); //0.0 - 49.6 dB for RTL // -3 - +71 dB for PlutoSDR (AD9363)
 
     m_displaySettings.setPeakHold(false);
+    m_receiver.startSpectrum();
 
-    Logger::info(
-        "Display settings initialised."
-    );
+    if (!m_radioController.start())
+        Logger::error("Project Orion receiver did not start.");
 
-
-    //setSpectrumSpanHz(500000);
-
-    setSpectrumSpanHz(18000000);
-
-
-
+    Logger::info("Radio and display settings initialised.");
 }
 
-quint32 Orion::spectrumSpanHz() const
-{
-    return m_spectrumSpanHz;
-}
+QObject* Orion::radio() { return &m_radio; }
+QObject* Orion::receiver() { return &m_receiver; }
+DisplaySettings* Orion::displaySettings() { return &m_displaySettings; }
 
-void Orion::setSpectrumSpanHz(
-    quint32 spanHz)
-{
-    if (m_spectrumSpanHz == spanHz)
-        return;
-
-    m_spectrumSpanHz = spanHz;
-
-    Logger::info(
-        QString(
-            "Spectrum span set to %1 Hz."
-            ).arg(spanHz)
-        );
-
-    emit spectrumSpanHzChanged(
-        spanHz
-        );
-}
-
-
-
-QObject* Orion::radio()
-{
-    return &m_radio;
-}
-
-QObject* Orion::receiver()
-{
-    return &m_receiver;
-}
-
-DisplaySettings* Orion::displaySettings()
-{
-    return &m_displaySettings;
-}
-
-void Orion::setMode(
-    const QString& modeName)
+void Orion::setMode(const QString& modeName)
 {
     DemodulationMode mode;
-
-    if (!stringToDemodulationMode(
-            modeName,
-            mode)) {
-
-        Logger::warning(
-            QString(
-                "Unsupported radio mode requested: %1"
-            ).arg(modeName)
-        );
-
+    if (!stringToDemodulationMode(modeName, mode)) {
+        Logger::warning(QString("Unsupported radio mode requested: %1").arg(modeName));
         return;
     }
-
     setMode(mode);
 }
 
-void Orion::setMode(
-    DemodulationMode mode)
+void Orion::setMode(DemodulationMode mode)
 {
     m_radio.setMode(mode);
-
-    const int defaultBandwidth =
-        m_radio.rxBandwidthHz();
-
-    Logger::info(
-        QString("Radio mode set to %1.")
-            .arg(m_radio.modeName())
-    );
-
-    emit modeCommanded(mode);
-
-    // Radio::setMode() may have applied a new
-    // mode-dependent default bandwidth.
-    emit rxBandwidthCommanded(
-        defaultBandwidth
-    );
+    Logger::info(QString("Radio mode set to %1.").arg(m_radio.modeName()));
 }
 
-void Orion::setFrequencyHz(
-    quint64 frequencyHz)
+void Orion::setFrequencyHz(quint64 frequencyHz)
 {
-    m_radio.setFrequencyHz(
-        frequencyHz
-    );
-
-    Logger::info(
-        QString(
-            "Radio frequency set to %1 Hz."
-        ).arg(frequencyHz)
-    );
-
-    emit frequencyCommanded(
-        frequencyHz
-    );
+    m_radio.setFrequencyHz(frequencyHz);
+    Logger::info(QString("Requested radio frequency set to %1 Hz.").arg(frequencyHz));
 }
 
-void Orion::setRxBandwidthHz(
-    int bandwidthHz)
+void Orion::setRxBandwidthHz(int bandwidthHz)
 {
-    m_radio.setRxBandwidthHz(
-        bandwidthHz
-    );
-
-    Logger::info(
-        QString(
-            "RX bandwidth set to %1 Hz."
-        ).arg(
-            m_radio.rxBandwidthHz()
-        )
-    );
-
-    emit rxBandwidthCommanded(
-        m_radio.rxBandwidthHz()
-    );
+    m_radio.setRxBandwidthHz(bandwidthHz);
+    Logger::info(QString("Requested RX bandwidth set to %1 Hz.").arg(m_radio.rxBandwidthHz()));
 }
 
-} // namespace HFSDR
+void Orion::setSpectrumSpanHz(quint32 spanHz)
+{
+    m_radio.setSpectrumSpanHz(spanHz);
+    Logger::info(QString("Requested spectrum span set to %1 Hz.").arg(m_radio.spectrumSpanHz()));
+}
+
+void Orion::setAutomaticRfGain(bool enabled)
+{
+    m_radio.setAutomaticRfGain(enabled);
+    Logger::info(QString("Requested RF gain mode set to %1.").arg(enabled ? "automatic" : "manual"));
+}
+
+void Orion::setRfGainDb(double gainDb)
+{
+    m_radio.setRfGainDb(gainDb);
+    Logger::info(QString("Requested RF gain set to %1 dB.").arg(gainDb, 0, 'f', 1));
+}
+
+void Orion::setSdrType(HFSDR::SDRType type)
+{
+    m_radio.setSdrType(type);
+    Logger::info(QString("Requested SDR type set to %1.").arg(sdrTypeToString(type)));
+}
+}

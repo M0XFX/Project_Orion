@@ -5,84 +5,40 @@
 #include <QString>
 #include <QThread>
 #include <QVariantList>
-
 #include "DSPWorker.h"
 #include "IQBlockRingBuffer.h"
 #include "IQSource.h"
 #include "IQSourceWorker.h"
 #include "ReceiverConfiguration.h"
-#include "RTLDevice.h"
 
 class Receiver : public QObject
 {
     Q_OBJECT
-
-    Q_PROPERTY(
-        QString status
-            READ status
-                WRITE setStatus
-                    NOTIFY statusChanged
-        )
-
-    Q_PROPERTY(
-        QVariantList spectrumBins
-            READ spectrumBins
-                NOTIFY spectrumBinsChanged
-        )
-
-    Q_PROPERTY(
-        QObject* rtlDevice
-            READ rtlDevice
-                CONSTANT
-        )
-
-    Q_PROPERTY(
-        bool simulatorEnabled
-            READ simulatorEnabled
-                WRITE setSimulatorEnabled
-                    NOTIFY simulatorEnabledChanged
-        )
+    Q_PROPERTY(QString status READ status WRITE setStatus NOTIFY statusChanged)
+    Q_PROPERTY(QVariantList spectrumBins READ spectrumBins NOTIFY spectrumBinsChanged)
+    Q_PROPERTY(bool simulatorEnabled READ simulatorEnabled WRITE setSimulatorEnabled NOTIFY simulatorEnabledChanged)
 
 public:
-    explicit Receiver(
-        QObject* parent = nullptr
-        );
-
+    explicit Receiver(HFSDR::IQSource* activeSource, QObject* parent = nullptr);
     ~Receiver() override;
-
     QString status() const;
     void setStatus(const QString& status);
-
     QVariantList spectrumBins() const;
-
-    QObject* rtlDevice();
-
     bool simulatorEnabled() const;
-
-    void setSimulatorEnabled(
-        bool enabled
-        );
+    void setSimulatorEnabled(bool enabled);
+    HFSDR::IQSource* activeSource();
+    bool openActiveSource();
+    bool setCenterFrequencyHz(quint64 frequencyHz);
+    bool setAutomaticGain(bool enabled);
+    bool setRfGainDb(double gainDb);
 
 public slots:
     void startSpectrum();
     void stopSpectrum();
-    void openRtlDevice();
-
-    void setMode(
-        HFSDR::DemodulationMode mode
-        );
-
-    void setRxBandwidthHz(
-        int bandwidthHz
-        );
-
-    void setReceiverConfiguration(
-        const HFSDR::ReceiverConfiguration&
-            configuration
-        );
-    void setSpectrumSpanHz(
-        int spanHz
-        );
+    void setMode(HFSDR::DemodulationMode mode);
+    void setRxBandwidthHz(int bandwidthHz);
+    void setReceiverConfiguration(const HFSDR::ReceiverConfiguration& configuration);
+    void setSpectrumSpanHz(int spanHz);
 
 signals:
     void statusChanged();
@@ -90,40 +46,23 @@ signals:
     void simulatorEnabledChanged();
 
 private slots:
-    void handleSpectrumReady(
-        const QVariantList& spectrumBins
-        );
+    void handleSpectrumReady(const QVariantList& spectrumBins);
 
 private:
     void createWorkers();
     void stopWorkers();
-
     void publishConfiguration();
 
     QString m_status = "Idle";
     QVariantList m_spectrumBins;
-
-    RTLDevice m_rtlDevice;
-
-    HFSDR::IQSource*
-        m_activeSource = nullptr;
-
-    HFSDR::IQBlockRingBuffer
-        m_iqRingBuffer;
-
+    HFSDR::IQSource* m_activeSource = nullptr;
+    HFSDR::IQBlockRingBuffer m_iqRingBuffer;
     QThread m_sourceThread;
-    IQSourceWorker*
-        m_sourceWorker = nullptr;
-
+    IQSourceWorker* m_sourceWorker = nullptr;
     QThread m_dspThread;
-    HFSDR::DSPWorker*
-        m_dspWorker = nullptr;
-
+    HFSDR::DSPWorker* m_dspWorker = nullptr;
     int m_spectrumSpanHz = 250000;
-
-    HFSDR::ReceiverConfiguration
-        m_configuration;
-
+    HFSDR::ReceiverConfiguration m_configuration;
     bool m_simulatorEnabled = false;
 };
 

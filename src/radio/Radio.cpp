@@ -234,6 +234,60 @@ void Radio::setRxBandwidthHz(
     publishReceiverConfiguration();
 }
 
+quint32 Radio::spectrumSpanHz() const
+{
+    return m_spectrumSpanHz;
+}
+
+void Radio::setSpectrumSpanHz(quint32 spanHz)
+{
+    if (spanHz < 10000)
+        spanHz = 10000;
+    if (m_spectrumSpanHz == spanHz)
+        return;
+    m_spectrumSpanHz = spanHz;
+    emit spectrumSpanHzChanged();
+}
+
+bool Radio::automaticRfGain() const
+{
+    return m_automaticRfGain;
+}
+
+void Radio::setAutomaticRfGain(bool enabled)
+{
+    if (m_automaticRfGain == enabled)
+        return;
+    m_automaticRfGain = enabled;
+    emit automaticRfGainChanged();
+}
+
+double Radio::rfGainDb() const
+{
+    return m_rfGainDb;
+}
+
+void Radio::setRfGainDb(double gainDb)
+{
+    if (qFuzzyCompare(m_rfGainDb + 1.0, gainDb + 1.0))
+        return;
+    m_rfGainDb = gainDb;
+    emit rfGainDbChanged();
+}
+
+HFSDR::SDRType Radio::sdrType() const
+{
+    return m_sdrType;
+}
+
+void Radio::setSdrType(HFSDR::SDRType type)
+{
+    if (m_sdrType == type)
+        return;
+    m_sdrType = type;
+    emit sdrTypeChanged();
+}
+
 HFSDR::ReceiverConfiguration
 Radio::receiverConfiguration() const
 {

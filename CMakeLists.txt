@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Project_Orion VERSION 0.3.6.2 LANGUAGES CXX)
+project(Project_Orion VERSION 0.3.7.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -141,6 +141,8 @@ qt_add_qml_module(Project_Orion
         src/graphics/SpectrumRenderer.cpp
         src/graphics/GraphicsEngine.h
         src/graphics/GraphicsEngine.cpp
+        src/graphics/SpectrumView.h
+        src/graphics/SpectrumView.cpp
 
 )
 

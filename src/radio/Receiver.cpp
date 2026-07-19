@@ -1,23 +1,26 @@
 #include "Receiver.h"
 #include "Logger.h"
 
-Receiver::Receiver(HFSDR::IQSource* activeSource, QObject* parent)
+Receiver::Receiver(
+    HFSDR::IQSource* activeSource,
+    QObject* parent)
     : QObject(parent),
       m_activeSource(activeSource),
-      m_iqRingBuffer(64)
+      m_receiverIqBuffer(64),
+      m_spectrumIqBuffer(16)
 {
-
     createWorkers();
     publishConfiguration();
 
     HFSDR::Logger::info(
-        "Receiver initialised."
+        "Receiver initialised with independent DSP and spectrum workers."
         );
 }
 
 Receiver::~Receiver()
 {
     stopWorkers();
+
     if (m_activeSource)
         m_activeSource->close();
 }
@@ -27,12 +30,11 @@ void Receiver::createWorkers()
     m_sourceWorker =
         new IQSourceWorker(
             m_activeSource,
-            &m_iqRingBuffer
+            &m_receiverIqBuffer,
+            &m_spectrumIqBuffer
             );
 
-    m_sourceWorker->moveToThread(
-        &m_sourceThread
-        );
+    m_sourceWorker->moveToThread(&m_sourceThread);
 
     connect(
         &m_sourceThread,
@@ -59,17 +61,10 @@ void Receiver::createWorkers()
 
     m_dspWorker =
         new HFSDR::DSPWorker(
-            &m_iqRingBuffer
+            &m_receiverIqBuffer
             );
 
-    m_dspWorker->setSpectrumSpanHz(
-        m_spectrumSpanHz
-        );
-
-
-    m_dspWorker->moveToThread(
-        &m_dspThread
-        );
+    m_dspWorker->moveToThread(&m_dspThread);
 
     connect(
         &m_dspThread,
@@ -87,15 +82,51 @@ void Receiver::createWorkers()
 
     connect(
         m_dspWorker,
-        &HFSDR::DSPWorker::spectrumReady,
+        &HFSDR::DSPWorker::errorOccurred,
+        this,
+        [](const QString& message) {
+            HFSDR::Logger::error(message);
+        }
+        );
+
+    m_spectrumWorker =
+        new HFSDR::SpectrumWorker(
+            &m_spectrumIqBuffer
+            );
+
+    m_spectrumWorker->setSpectrumSpanHz(
+        m_spectrumSpanHz
+        );
+
+    m_spectrumWorker->moveToThread(
+        &m_spectrumThread
+        );
+
+    connect(
+        &m_spectrumThread,
+        &QThread::started,
+        m_spectrumWorker,
+        &HFSDR::SpectrumWorker::start
+        );
+
+    connect(
+        m_spectrumWorker,
+        &HFSDR::SpectrumWorker::stopped,
+        &m_spectrumThread,
+        &QThread::quit
+        );
+
+    connect(
+        m_spectrumWorker,
+        &HFSDR::SpectrumWorker::spectrumReady,
         this,
         &Receiver::handleSpectrumReady,
         Qt::QueuedConnection
         );
 
     connect(
-        m_dspWorker,
-        &HFSDR::DSPWorker::errorOccurred,
+        m_spectrumWorker,
+        &HFSDR::SpectrumWorker::errorOccurred,
         this,
         [](const QString& message) {
             HFSDR::Logger::error(message);
@@ -111,7 +142,11 @@ void Receiver::stopWorkers()
     if (m_dspWorker)
         m_dspWorker->stop();
 
-    m_iqRingBuffer.stop();
+    if (m_spectrumWorker)
+        m_spectrumWorker->stop();
+
+    m_receiverIqBuffer.stop();
+    m_spectrumIqBuffer.stop();
 
     if (m_sourceThread.isRunning()) {
         m_sourceThread.quit();
@@ -123,11 +158,19 @@ void Receiver::stopWorkers()
         m_dspThread.wait();
     }
 
+    if (m_spectrumThread.isRunning()) {
+        m_spectrumThread.quit();
+        m_spectrumThread.wait();
+    }
+
     delete m_sourceWorker;
     m_sourceWorker = nullptr;
 
     delete m_dspWorker;
     m_dspWorker = nullptr;
+
+    delete m_spectrumWorker;
+    m_spectrumWorker = nullptr;
 }
 
 QString Receiver::status() const
@@ -135,8 +178,7 @@ QString Receiver::status() const
     return m_status;
 }
 
-void Receiver::setStatus(
-    const QString& status)
+void Receiver::setStatus(const QString& status)
 {
     if (m_status == status)
         return;
@@ -155,8 +197,7 @@ bool Receiver::simulatorEnabled() const
     return m_simulatorEnabled;
 }
 
-void Receiver::setSimulatorEnabled(
-    bool enabled)
+void Receiver::setSimulatorEnabled(bool enabled)
 {
     if (m_simulatorEnabled == enabled)
         return;
@@ -168,7 +209,7 @@ void Receiver::setSimulatorEnabled(
 void Receiver::startSpectrum()
 {
     HFSDR::Logger::info(
-        "Spectrum display ready."
+        "Spectrum display enabled."
         );
 }
 
@@ -186,6 +227,7 @@ bool Receiver::openActiveSource()
     }
 
     m_activeSource->open();
+
     if (!m_activeSource->connected()) {
         setStatus("SDR Open Failed");
         return false;
@@ -193,19 +235,25 @@ bool Receiver::openActiveSource()
 
     setStatus("SDR Connected");
 
+    // Start consumers before the source begins filling their queues.
     if (!m_dspThread.isRunning()) {
         HFSDR::Logger::info(
-            "Starting DSP worker thread."
+            "Starting receiver DSP worker thread."
             );
-
         m_dspThread.start();
+    }
+
+    if (!m_spectrumThread.isRunning()) {
+        HFSDR::Logger::info(
+            "Starting spectrum worker thread."
+            );
+        m_spectrumThread.start();
     }
 
     if (!m_sourceThread.isRunning()) {
         HFSDR::Logger::info(
             "Starting IQ source worker thread."
             );
-
         m_sourceThread.start();
     }
 
@@ -220,23 +268,22 @@ HFSDR::IQSource* Receiver::activeSource()
 bool Receiver::setCenterFrequencyHz(quint64 frequencyHz)
 {
     return m_activeSource &&
-        m_activeSource->setCenterFrequencyHz(frequencyHz);
+           m_activeSource->setCenterFrequencyHz(frequencyHz);
 }
 
 bool Receiver::setAutomaticGain(bool enabled)
 {
     return m_activeSource &&
-        m_activeSource->setAutomaticGain(enabled);
+           m_activeSource->setAutomaticGain(enabled);
 }
 
 bool Receiver::setRfGainDb(double gainDb)
 {
     return m_activeSource &&
-        m_activeSource->setGainDb(gainDb);
+           m_activeSource->setGainDb(gainDb);
 }
 
-void Receiver::setMode(
-    HFSDR::DemodulationMode mode)
+void Receiver::setMode(HFSDR::DemodulationMode mode)
 {
     if (m_configuration.mode == mode)
         return;
@@ -245,8 +292,7 @@ void Receiver::setMode(
     publishConfiguration();
 }
 
-void Receiver::setRxBandwidthHz(
-    int bandwidthHz)
+void Receiver::setRxBandwidthHz(int bandwidthHz)
 {
     if (bandwidthHz < 50)
         bandwidthHz = 50;
@@ -254,19 +300,14 @@ void Receiver::setRxBandwidthHz(
     if (bandwidthHz > 250000)
         bandwidthHz = 250000;
 
-    if (m_configuration.bandwidthHz ==
-        bandwidthHz) {
+    if (m_configuration.bandwidthHz == bandwidthHz)
         return;
-    }
 
-    m_configuration.bandwidthHz =
-        bandwidthHz;
-
+    m_configuration.bandwidthHz = bandwidthHz;
     publishConfiguration();
 }
 
-void Receiver::setSpectrumSpanHz(
-    int spanHz)
+void Receiver::setSpectrumSpanHz(int spanHz)
 {
     if (spanHz < 10000)
         spanHz = 10000;
@@ -276,31 +317,21 @@ void Receiver::setSpectrumSpanHz(
 
     m_spectrumSpanHz = spanHz;
 
-    if (m_dspWorker) {
-        m_dspWorker->setSpectrumSpanHz(
+    if (m_spectrumWorker) {
+        m_spectrumWorker->setSpectrumSpanHz(
             m_spectrumSpanHz
             );
     }
 
     HFSDR::Logger::info(
         QString(
-            "Receiver spectrum span set to %1 Hz."
+            "Receiver spectrum span request set to %1 Hz."
             ).arg(m_spectrumSpanHz)
         );
 }
 
-
-
-
-
-
-
-
-
-
 void Receiver::setReceiverConfiguration(
-    const HFSDR::ReceiverConfiguration&
-        configuration)
+    const HFSDR::ReceiverConfiguration& configuration)
 {
     if (m_configuration == configuration)
         return;
@@ -314,9 +345,7 @@ void Receiver::publishConfiguration()
     if (!m_dspWorker)
         return;
 
-    m_dspWorker->setConfiguration(
-        m_configuration
-        );
+    m_dspWorker->setConfiguration(m_configuration);
 }
 
 void Receiver::handleSpectrumReady(

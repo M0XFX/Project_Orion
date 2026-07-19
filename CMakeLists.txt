@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Project_Orion VERSION 0.2.0 LANGUAGES CXX)
+project(Project_Orion VERSION 0.3.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -66,8 +66,6 @@ qt_add_qml_module(Project_Orion
         src/sources/SignalGenerator.h
         src/sources/SignalGenerator.cpp
 
-        src/dsp/FFTProcessor.h
-        src/dsp/FFTProcessor.cpp
         src/dsp/DSPProcessor.h
         src/dsp/DSPProcessor.cpp
         src/dsp/DSPWorker.h src/dsp/DSPWorker.cpp
@@ -113,6 +111,20 @@ qt_add_qml_module(Project_Orion
         src/dsp/ProductDetector.cpp
         src/dsp/ComplexSidebandFilter.h
         src/dsp/ComplexSidebandFilter.cpp
+
+        src/spectrum/FFTAccumulator.h
+        src/spectrum/FFTAccumulator.cpp
+        src/spectrum/FFTProcessor.h
+        src/spectrum/FFTProcessor.cpp
+        src/spectrum/SpectrumCalibrator.h
+        src/spectrum/SpectrumCalibrator.cpp
+        src/spectrum/SpectrumDetector.h
+        src/spectrum/SpectrumDetector.cpp
+        src/spectrum/SpectrumEngine.h
+        src/spectrum/SpectrumEngine.cpp
+        src/spectrum/SpectrumWorker.h
+        src/spectrum/SpectrumWorker.cpp
+
         src/core/IQSourceCapabilities.h
 
 
@@ -135,6 +147,7 @@ target_include_directories(Project_Orion
         ${CMAKE_CURRENT_SOURCE_DIR}/src/audio
         ${CMAKE_CURRENT_SOURCE_DIR}/src/radio
         ${CMAKE_CURRENT_SOURCE_DIR}/src/gui
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/spectrum
         ${RTLSDR_INCLUDE_DIR}
 )
 

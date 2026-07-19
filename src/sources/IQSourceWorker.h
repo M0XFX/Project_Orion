@@ -16,7 +16,8 @@ class IQSourceWorker : public QObject
 public:
     explicit IQSourceWorker(
         HFSDR::IQSource* source,
-        HFSDR::IQBlockRingBuffer* ringBuffer,
+        HFSDR::IQBlockRingBuffer* receiverBuffer,
+        HFSDR::IQBlockRingBuffer* spectrumBuffer,
         QObject* parent = nullptr
         );
 
@@ -33,10 +34,10 @@ signals:
 
 private:
     HFSDR::IQSource* m_source = nullptr;
-    HFSDR::IQBlockRingBuffer* m_ringBuffer = nullptr;
+    HFSDR::IQBlockRingBuffer* m_receiverBuffer = nullptr;
+    HFSDR::IQBlockRingBuffer* m_spectrumBuffer = nullptr;
 
     std::atomic_bool m_running = false;
-
     std::size_t m_blockSize = 2048;
 };
 

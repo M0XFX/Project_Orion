@@ -3,12 +3,13 @@
 
 IQSourceWorker::IQSourceWorker(
     HFSDR::IQSource* source,
-    HFSDR::IQBlockRingBuffer* ringBuffer,
-    QObject* parent
-    )
+    HFSDR::IQBlockRingBuffer* receiverBuffer,
+    HFSDR::IQBlockRingBuffer* spectrumBuffer,
+    QObject* parent)
     : QObject(parent),
-    m_source(source),
-    m_ringBuffer(ringBuffer)
+      m_source(source),
+      m_receiverBuffer(receiverBuffer),
+      m_spectrumBuffer(spectrumBuffer)
 {
 }
 
@@ -30,10 +31,10 @@ void IQSourceWorker::start()
         return;
     }
 
-    if (!m_ringBuffer) {
+    if (!m_receiverBuffer || !m_spectrumBuffer) {
         m_running.store(false);
         emit errorOccurred(
-            "IQSourceWorker has no IQ ring buffer."
+            "IQSourceWorker does not have both IQ output buffers."
             );
         return;
     }
@@ -46,10 +47,11 @@ void IQSourceWorker::start()
         return;
     }
 
-    m_ringBuffer->reset();
+    m_receiverBuffer->reset();
+    m_spectrumBuffer->reset();
 
     HFSDR::Logger::info(
-        "IQ source streaming started."
+        "IQ source streaming started with independent receiver and spectrum paths."
         );
 
     emit started();
@@ -71,13 +73,11 @@ void IQSourceWorker::start()
             break;
         }
 
-        if (!m_ringBuffer->push(block)) {
-            if (!m_running.load())
-                break;
-
-            // Dropped blocks are counted by the ring buffer.
-            // Do not flood the application log here.
-        }
+        // Each hardware block is read once and then copied into two
+        // independent queues. A full spectrum queue may drop a display
+        // block without delaying the receiver/audio path.
+        m_receiverBuffer->push(block);
+        m_spectrumBuffer->push(block);
     }
 
     m_running.store(false);
@@ -94,6 +94,9 @@ void IQSourceWorker::stop()
     if (!m_running.exchange(false))
         return;
 
-    if (m_ringBuffer)
-        m_ringBuffer->stop();
+    if (m_receiverBuffer)
+        m_receiverBuffer->stop();
+
+    if (m_spectrumBuffer)
+        m_spectrumBuffer->stop();
 }

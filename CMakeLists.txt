@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Project_Orion VERSION 0.3.4 LANGUAGES CXX)
+project(Project_Orion VERSION 0.3.6.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS
     Quick
     Multimedia
+    Gui
 )
 
 qt_standard_project_setup(REQUIRES 6.10)
@@ -131,6 +132,10 @@ qt_add_qml_module(Project_Orion
 
         src/core/IQSourceCapabilities.h
 
+        src/graphics/SpectrumTheme.h
+        src/graphics/SpectrumTheme.cpp
+        src/graphics/ThemeManager.h
+        src/graphics/ThemeManager.cpp
 
 )
 
@@ -152,6 +157,7 @@ target_include_directories(Project_Orion
         ${CMAKE_CURRENT_SOURCE_DIR}/src/radio
         ${CMAKE_CURRENT_SOURCE_DIR}/src/gui
         ${CMAKE_CURRENT_SOURCE_DIR}/src/spectrum
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics
         ${RTLSDR_INCLUDE_DIR}
 )
 
@@ -159,5 +165,6 @@ target_link_libraries(Project_Orion
     PRIVATE
         Qt6::Quick
         Qt6::Multimedia
+        Qt6::Gui
         ${RTLSDR_LIBRARY}
 )

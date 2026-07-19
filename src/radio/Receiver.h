@@ -61,6 +61,10 @@ public slots:
     void setSpectrumSmoothingDownwardThresholdDb(double thresholdDb);
     void setSpectrumSmoothingBlend(double blend);
 
+    void setSpectrumFrequencySmoothingEnabled(bool enabled);
+    void setSpectrumFrequencySmoothingRadius(int radius);
+    void setSpectrumFrequencySmoothingStrength(double strength);
+
 signals:
     void statusChanged();
     void spectrumBinsChanged();

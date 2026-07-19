@@ -382,3 +382,24 @@ void Receiver::handleSpectrumReady(
     m_spectrumBins = spectrumBins;
     emit spectrumBinsChanged();
 }
+
+void Receiver::setSpectrumFrequencySmoothingEnabled(bool enabled)
+{
+    if (m_spectrumWorker)
+        m_spectrumWorker->setFrequencySmoothingEnabled(enabled);
+}
+
+void Receiver::setSpectrumFrequencySmoothingRadius(int radius)
+{
+    if (m_spectrumWorker)
+        m_spectrumWorker->setFrequencySmoothingRadius(radius);
+}
+
+void Receiver::setSpectrumFrequencySmoothingStrength(double strength)
+{
+    if (m_spectrumWorker) {
+        m_spectrumWorker->setFrequencySmoothingStrength(
+            static_cast<float>(strength)
+            );
+    }
+}

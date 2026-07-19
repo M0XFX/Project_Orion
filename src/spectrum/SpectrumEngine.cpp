@@ -50,6 +50,21 @@ void SpectrumEngine::setSmoothingBlend(float blend)
     m_smoother.setBlend(blend);
 }
 
+void SpectrumEngine::setFrequencySmoothingEnabled(bool enabled)
+{
+    m_frequencySmoother.setEnabled(enabled);
+}
+
+void SpectrumEngine::setFrequencySmoothingRadius(int radius)
+{
+    m_frequencySmoother.setRadius(radius);
+}
+
+void SpectrumEngine::setFrequencySmoothingStrength(float strength)
+{
+    m_frequencySmoother.setStrength(strength);
+}
+
 void SpectrumEngine::reset()
 {
     m_detector.reset();
@@ -80,8 +95,16 @@ bool SpectrumEngine::processFrame(
         m_unsmoothedDbfs
         );
 
+    // Keep the two display operations independent and switchable. The
+    // asymmetric stage raises only isolated downward needles. The Gaussian
+    // stage then reduces general bin-to-bin grass without adding time lag.
     m_smoother.process(
         m_unsmoothedDbfs,
+        m_spikeSuppressedDbfs
+        );
+
+    m_frequencySmoother.process(
+        m_spikeSuppressedDbfs,
         outputDbfs
         );
 

@@ -28,7 +28,7 @@ SpectrumWorker::SpectrumWorker(
         SpectrumDetectorMode::Average
         );
 
-    m_engine.setAveragingAlpha(0.05f);
+    m_engine.setAveragingAlpha(0.15f);
 }
 
 bool SpectrumWorker::running() const
@@ -114,6 +114,47 @@ void SpectrumWorker::setSmoothingBlend(float blend)
     m_smoothingDirty = true;
 }
 
+
+void SpectrumWorker::setFrequencySmoothingEnabled(bool enabled)
+{
+    std::lock_guard<std::mutex> lock(m_frequencySmoothingMutex);
+
+    if (m_pendingFrequencySmoothingEnabled == enabled)
+        return;
+
+    m_pendingFrequencySmoothingEnabled = enabled;
+    m_frequencySmoothingDirty = true;
+}
+
+void SpectrumWorker::setFrequencySmoothingRadius(int radius)
+{
+    radius = std::clamp(radius, 1, 8);
+
+    std::lock_guard<std::mutex> lock(m_frequencySmoothingMutex);
+
+    if (m_pendingFrequencySmoothingRadius == radius)
+        return;
+
+    m_pendingFrequencySmoothingRadius = radius;
+    m_frequencySmoothingDirty = true;
+}
+
+void SpectrumWorker::setFrequencySmoothingStrength(float strength)
+{
+    if (!std::isfinite(strength))
+        return;
+
+    strength = std::clamp(strength, 0.0f, 1.0f);
+
+    std::lock_guard<std::mutex> lock(m_frequencySmoothingMutex);
+
+    if (m_pendingFrequencySmoothingStrength == strength)
+        return;
+
+    m_pendingFrequencySmoothingStrength = strength;
+    m_frequencySmoothingDirty = true;
+}
+
 void SpectrumWorker::start()
 {
     if (m_running.exchange(true))
@@ -140,6 +181,7 @@ void SpectrumWorker::start()
 
         applyPendingSpectrumSpan();
         applyPendingSmoothingSettings();
+        applyPendingFrequencySmoothingSettings();
 
         m_displayDdc.process(
             m_inputBlock,
@@ -306,6 +348,40 @@ void SpectrumWorker::applyPendingSmoothingSettings()
             .arg(windowSize)
             .arg(thresholdDb, 0, 'f', 2)
             .arg(blend, 0, 'f', 2)
+        );
+}
+
+
+void SpectrumWorker::applyPendingFrequencySmoothingSettings()
+{
+    bool enabled = true;
+    int radius = 2;
+    float strength = 0.65f;
+
+    {
+        std::lock_guard<std::mutex> lock(m_frequencySmoothingMutex);
+
+        if (!m_frequencySmoothingDirty)
+            return;
+
+        enabled = m_pendingFrequencySmoothingEnabled;
+        radius = m_pendingFrequencySmoothingRadius;
+        strength = m_pendingFrequencySmoothingStrength;
+        m_frequencySmoothingDirty = false;
+    }
+
+    m_engine.setFrequencySmoothingEnabled(enabled);
+    m_engine.setFrequencySmoothingRadius(radius);
+    m_engine.setFrequencySmoothingStrength(strength);
+
+    Logger::info(
+        QString(
+            "Spectrum frequency smoother: %1, "
+            "radius=%2 bins, strength=%3."
+            )
+            .arg(enabled ? "enabled" : "disabled")
+            .arg(radius)
+            .arg(strength, 0, 'f', 2)
         );
 }
 

@@ -27,19 +27,16 @@ Orion::Orion(QObject* parent)
 
     // Frequency-domain smoothing removes isolated downward FFT spikes
     // without adding the sluggish response of heavier time averaging.
-
-    /*
     setSpectrumSmoothingEnabled(true);
     setSpectrumSmoothingWindowSize(3); //5
     setSpectrumSmoothingDownwardThresholdDb(2.0); //1.5
     setSpectrumSmoothingBlend(0.5); //0.75
-    */
 
-    // Frequency-domain downward-spike suppression test
-    setSpectrumSmoothingEnabled(true);
-    setSpectrumSmoothingWindowSize(7);
-    setSpectrumSmoothingDownwardThresholdDb(0.25);
-    setSpectrumSmoothingBlend(1.0);
+    // Symmetric frequency-domain convolution smoothing reduces general
+    // FFT bin-to-bin grass without increasing time averaging or latency.
+    setSpectrumFrequencySmoothingEnabled(true);
+    setSpectrumFrequencySmoothingRadius(2);
+    setSpectrumFrequencySmoothingStrength(0.65);
 
     m_displaySettings.setPeakHold(false);
     m_receiver.startSpectrum();
@@ -132,6 +129,34 @@ void Orion::setSpectrumSmoothingBlend(double blend)
     Logger::info(
         QString("Requested spectrum smoothing blend set to %1.")
             .arg(blend, 0, 'f', 2)
+        );
+}
+
+
+void Orion::setSpectrumFrequencySmoothingEnabled(bool enabled)
+{
+    m_receiver.setSpectrumFrequencySmoothingEnabled(enabled);
+    Logger::info(
+        QString("Spectrum frequency smoothing %1.")
+            .arg(enabled ? "enabled" : "disabled")
+        );
+}
+
+void Orion::setSpectrumFrequencySmoothingRadius(int radius)
+{
+    m_receiver.setSpectrumFrequencySmoothingRadius(radius);
+    Logger::info(
+        QString("Requested spectrum frequency smoothing radius set to %1 bins.")
+            .arg(radius)
+        );
+}
+
+void Orion::setSpectrumFrequencySmoothingStrength(double strength)
+{
+    m_receiver.setSpectrumFrequencySmoothingStrength(strength);
+    Logger::info(
+        QString("Requested spectrum frequency smoothing strength set to %1.")
+            .arg(strength, 0, 'f', 2)
         );
 }
 

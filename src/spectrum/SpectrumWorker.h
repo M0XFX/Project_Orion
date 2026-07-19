@@ -39,6 +39,10 @@ public:
     void setSmoothingDownwardThresholdDb(float thresholdDb);
     void setSmoothingBlend(float blend);
 
+    void setFrequencySmoothingEnabled(bool enabled);
+    void setFrequencySmoothingRadius(int radius);
+    void setFrequencySmoothingStrength(float strength);
+
 public slots:
     void start();
     void stop();
@@ -59,6 +63,7 @@ private:
     bool receiveNextBlock();
     void applyPendingSpectrumSpan();
     void applyPendingSmoothingSettings();
+    void applyPendingFrequencySmoothingSettings();
     bool spectrumUpdateDue();
     void publishSpectrum();
 
@@ -90,6 +95,12 @@ private:
     float m_pendingSmoothingThresholdDb = 1.5f;
     float m_pendingSmoothingBlend = 0.75f;
     bool m_smoothingDirty = true;
+
+    mutable std::mutex m_frequencySmoothingMutex;
+    bool m_pendingFrequencySmoothingEnabled = true;
+    int m_pendingFrequencySmoothingRadius = 2;
+    float m_pendingFrequencySmoothingStrength = 0.65f;
+    bool m_frequencySmoothingDirty = true;
 };
 
 } // namespace HFSDR

@@ -35,8 +35,18 @@ Orion::Orion(QObject* parent)
     // Symmetric frequency-domain convolution smoothing reduces general
     // FFT bin-to-bin grass without increasing time averaging or latency.
     setSpectrumFrequencySmoothingEnabled(true);
-    setSpectrumFrequencySmoothingRadius(2);
+    setSpectrumFrequencySmoothingRadius(5); //2
     setSpectrumFrequencySmoothingStrength(0.65);
+
+    // Temporal averaging controls frame-to-frame response. Higher alpha is
+    // faster and less averaged; 1.0 disables averaging while retaining the
+    // selected detector pipeline. Frequency smoothing now does most of the
+    // visual cleanup, so 0.15 is a more responsive starting point.
+    setSpectrumTemporalAveragingEnabled(true);
+    setSpectrumTemporalAveragingAlpha(0.15);
+
+    // Limit QML publication rate independently from FFT processing.
+    setSpectrumFramesPerSecond(25); //25
 
     m_displaySettings.setPeakHold(false);
     m_receiver.startSpectrum();
@@ -157,6 +167,34 @@ void Orion::setSpectrumFrequencySmoothingStrength(double strength)
     Logger::info(
         QString("Requested spectrum frequency smoothing strength set to %1.")
             .arg(strength, 0, 'f', 2)
+        );
+}
+
+
+void Orion::setSpectrumTemporalAveragingEnabled(bool enabled)
+{
+    m_receiver.setSpectrumTemporalAveragingEnabled(enabled);
+    Logger::info(
+        QString("Spectrum temporal averaging %1.")
+            .arg(enabled ? "enabled" : "disabled")
+        );
+}
+
+void Orion::setSpectrumTemporalAveragingAlpha(double alpha)
+{
+    m_receiver.setSpectrumTemporalAveragingAlpha(alpha);
+    Logger::info(
+        QString("Requested spectrum temporal averaging alpha set to %1.")
+            .arg(alpha, 0, 'f', 3)
+        );
+}
+
+void Orion::setSpectrumFramesPerSecond(int framesPerSecond)
+{
+    m_receiver.setSpectrumFramesPerSecond(framesPerSecond);
+    Logger::info(
+        QString("Requested spectrum display rate set to %1 FPS.")
+            .arg(framesPerSecond)
         );
 }
 

@@ -37,6 +37,10 @@ public:
     Q_INVOKABLE void setSpectrumFrequencySmoothingEnabled(bool enabled);
     Q_INVOKABLE void setSpectrumFrequencySmoothingRadius(int radius);
     Q_INVOKABLE void setSpectrumFrequencySmoothingStrength(double strength);
+
+    Q_INVOKABLE void setSpectrumTemporalAveragingEnabled(bool enabled);
+    Q_INVOKABLE void setSpectrumTemporalAveragingAlpha(double alpha);
+    Q_INVOKABLE void setSpectrumFramesPerSecond(int framesPerSecond);
     void setAutomaticRfGain(bool enabled);
     void setRfGainDb(double gainDb);
     void setSdrType(HFSDR::SDRType type);

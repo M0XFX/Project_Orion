@@ -65,6 +65,10 @@ public slots:
     void setSpectrumFrequencySmoothingRadius(int radius);
     void setSpectrumFrequencySmoothingStrength(double strength);
 
+    void setSpectrumTemporalAveragingEnabled(bool enabled);
+    void setSpectrumTemporalAveragingAlpha(double alpha);
+    void setSpectrumFramesPerSecond(int framesPerSecond);
+
 signals:
     void statusChanged();
     void spectrumBinsChanged();

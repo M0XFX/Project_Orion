@@ -155,6 +155,46 @@ void SpectrumWorker::setFrequencySmoothingStrength(float strength)
     m_frequencySmoothingDirty = true;
 }
 
+void SpectrumWorker::setTemporalAveragingEnabled(bool enabled)
+{
+    std::lock_guard<std::mutex> lock(m_temporalAveragingMutex);
+
+    if (m_pendingTemporalAveragingEnabled == enabled)
+        return;
+
+    m_pendingTemporalAveragingEnabled = enabled;
+    m_temporalAveragingDirty = true;
+}
+
+void SpectrumWorker::setTemporalAveragingAlpha(float alpha)
+{
+    if (!std::isfinite(alpha))
+        return;
+
+    alpha = std::clamp(alpha, 0.01f, 1.0f);
+
+    std::lock_guard<std::mutex> lock(m_temporalAveragingMutex);
+
+    if (m_pendingTemporalAveragingAlpha == alpha)
+        return;
+
+    m_pendingTemporalAveragingAlpha = alpha;
+    m_temporalAveragingDirty = true;
+}
+
+void SpectrumWorker::setFramesPerSecond(int framesPerSecond)
+{
+    framesPerSecond = std::clamp(framesPerSecond, 5, 60);
+
+    std::lock_guard<std::mutex> lock(m_displayRateMutex);
+
+    if (m_pendingFramesPerSecond == framesPerSecond)
+        return;
+
+    m_pendingFramesPerSecond = framesPerSecond;
+    m_displayRateDirty = true;
+}
+
 void SpectrumWorker::start()
 {
     if (m_running.exchange(true))
@@ -182,6 +222,8 @@ void SpectrumWorker::start()
         applyPendingSpectrumSpan();
         applyPendingSmoothingSettings();
         applyPendingFrequencySmoothingSettings();
+        applyPendingTemporalAveragingSettings();
+        applyPendingDisplayRate();
 
         m_displayDdc.process(
             m_inputBlock,
@@ -382,6 +424,67 @@ void SpectrumWorker::applyPendingFrequencySmoothingSettings()
             .arg(enabled ? "enabled" : "disabled")
             .arg(radius)
             .arg(strength, 0, 'f', 2)
+        );
+}
+
+void SpectrumWorker::applyPendingTemporalAveragingSettings()
+{
+    bool enabled = true;
+    float alpha = 0.15f;
+
+    {
+        std::lock_guard<std::mutex> lock(m_temporalAveragingMutex);
+
+        if (!m_temporalAveragingDirty)
+            return;
+
+        enabled = m_pendingTemporalAveragingEnabled;
+        alpha = m_pendingTemporalAveragingAlpha;
+        m_temporalAveragingDirty = false;
+    }
+
+    m_engine.setDetectorMode(
+        enabled
+            ? SpectrumDetectorMode::Average
+            : SpectrumDetectorMode::Sample
+        );
+
+    m_engine.setAveragingAlpha(alpha);
+
+    Logger::info(
+        QString(
+            "Spectrum temporal averaging: %1, alpha=%2."
+            )
+            .arg(enabled ? "enabled" : "disabled")
+            .arg(alpha, 0, 'f', 3)
+        );
+}
+
+void SpectrumWorker::applyPendingDisplayRate()
+{
+    int framesPerSecond = 25;
+
+    {
+        std::lock_guard<std::mutex> lock(m_displayRateMutex);
+
+        if (!m_displayRateDirty)
+            return;
+
+        framesPerSecond = m_pendingFramesPerSecond;
+        m_displayRateDirty = false;
+    }
+
+    m_publishIntervalMs = std::max<qint64>(
+        1,
+        1000 / framesPerSecond
+        );
+
+    Logger::info(
+        QString(
+            "Spectrum display publication rate: %1 FPS (%2 ms)."
+            )
+            .arg(framesPerSecond)
+            .arg(m_publishIntervalMs)
         );
 }
 

@@ -43,6 +43,10 @@ public:
     void setFrequencySmoothingRadius(int radius);
     void setFrequencySmoothingStrength(float strength);
 
+    void setTemporalAveragingEnabled(bool enabled);
+    void setTemporalAveragingAlpha(float alpha);
+    void setFramesPerSecond(int framesPerSecond);
+
 public slots:
     void start();
     void stop();
@@ -64,6 +68,8 @@ private:
     void applyPendingSpectrumSpan();
     void applyPendingSmoothingSettings();
     void applyPendingFrequencySmoothingSettings();
+    void applyPendingTemporalAveragingSettings();
+    void applyPendingDisplayRate();
     bool spectrumUpdateDue();
     void publishSpectrum();
 
@@ -101,6 +107,15 @@ private:
     int m_pendingFrequencySmoothingRadius = 2;
     float m_pendingFrequencySmoothingStrength = 0.65f;
     bool m_frequencySmoothingDirty = true;
+
+    mutable std::mutex m_temporalAveragingMutex;
+    bool m_pendingTemporalAveragingEnabled = true;
+    float m_pendingTemporalAveragingAlpha = 0.15f;
+    bool m_temporalAveragingDirty = true;
+
+    mutable std::mutex m_displayRateMutex;
+    int m_pendingFramesPerSecond = 25;
+    bool m_displayRateDirty = true;
 };
 
 } // namespace HFSDR

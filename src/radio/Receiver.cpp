@@ -403,3 +403,24 @@ void Receiver::setSpectrumFrequencySmoothingStrength(double strength)
             );
     }
 }
+
+void Receiver::setSpectrumTemporalAveragingEnabled(bool enabled)
+{
+    if (m_spectrumWorker)
+        m_spectrumWorker->setTemporalAveragingEnabled(enabled);
+}
+
+void Receiver::setSpectrumTemporalAveragingAlpha(double alpha)
+{
+    if (m_spectrumWorker) {
+        m_spectrumWorker->setTemporalAveragingAlpha(
+            static_cast<float>(alpha)
+            );
+    }
+}
+
+void Receiver::setSpectrumFramesPerSecond(int framesPerSecond)
+{
+    if (m_spectrumWorker)
+        m_spectrumWorker->setFramesPerSecond(framesPerSecond);
+}

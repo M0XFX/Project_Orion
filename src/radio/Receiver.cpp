@@ -330,6 +330,34 @@ void Receiver::setSpectrumSpanHz(int spanHz)
         );
 }
 
+
+void Receiver::setSpectrumSmoothingEnabled(bool enabled)
+{
+    if (m_spectrumWorker)
+        m_spectrumWorker->setSmoothingEnabled(enabled);
+}
+
+void Receiver::setSpectrumSmoothingWindowSize(int windowSize)
+{
+    if (m_spectrumWorker)
+        m_spectrumWorker->setSmoothingWindowSize(windowSize);
+}
+
+void Receiver::setSpectrumSmoothingDownwardThresholdDb(double thresholdDb)
+{
+    if (m_spectrumWorker) {
+        m_spectrumWorker->setSmoothingDownwardThresholdDb(
+            static_cast<float>(thresholdDb)
+            );
+    }
+}
+
+void Receiver::setSpectrumSmoothingBlend(double blend)
+{
+    if (m_spectrumWorker)
+        m_spectrumWorker->setSmoothingBlend(static_cast<float>(blend));
+}
+
 void Receiver::setReceiverConfiguration(
     const HFSDR::ReceiverConfiguration& configuration)
 {

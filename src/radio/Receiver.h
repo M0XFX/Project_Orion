@@ -56,6 +56,11 @@ public slots:
 
     void setSpectrumSpanHz(int spanHz);
 
+    void setSpectrumSmoothingEnabled(bool enabled);
+    void setSpectrumSmoothingWindowSize(int windowSize);
+    void setSpectrumSmoothingDownwardThresholdDb(double thresholdDb);
+    void setSpectrumSmoothingBlend(double blend);
+
 signals:
     void statusChanged();
     void spectrumBinsChanged();

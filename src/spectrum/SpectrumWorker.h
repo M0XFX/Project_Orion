@@ -33,6 +33,12 @@ public:
     // Thread-safe. May be called by Receiver's control thread.
     void setSpectrumSpanHz(int spanHz);
 
+    // Thread-safe spectrum presentation controls.
+    void setSmoothingEnabled(bool enabled);
+    void setSmoothingWindowSize(int windowSize);
+    void setSmoothingDownwardThresholdDb(float thresholdDb);
+    void setSmoothingBlend(float blend);
+
 public slots:
     void start();
     void stop();
@@ -52,6 +58,7 @@ signals:
 private:
     bool receiveNextBlock();
     void applyPendingSpectrumSpan();
+    void applyPendingSmoothingSettings();
     bool spectrumUpdateDue();
     void publishSpectrum();
 
@@ -76,6 +83,13 @@ private:
     bool m_spectrumSpanDirty = true;
 
     float m_baseFrequencyShiftHz = 0.0f;
+
+    mutable std::mutex m_smoothingMutex;
+    bool m_pendingSmoothingEnabled = true;
+    int m_pendingSmoothingWindowSize = 5;
+    float m_pendingSmoothingThresholdDb = 1.5f;
+    float m_pendingSmoothingBlend = 0.75f;
+    bool m_smoothingDirty = true;
 };
 
 } // namespace HFSDR

@@ -30,6 +30,26 @@ void SpectrumEngine::setAveragingAlpha(float alpha)
     m_detector.setAveragingAlpha(alpha);
 }
 
+void SpectrumEngine::setSmoothingEnabled(bool enabled)
+{
+    m_smoother.setEnabled(enabled);
+}
+
+void SpectrumEngine::setSmoothingWindowSize(int windowSize)
+{
+    m_smoother.setWindowSize(windowSize);
+}
+
+void SpectrumEngine::setSmoothingDownwardThresholdDb(float thresholdDb)
+{
+    m_smoother.setDownwardThresholdDb(thresholdDb);
+}
+
+void SpectrumEngine::setSmoothingBlend(float blend)
+{
+    m_smoother.setBlend(blend);
+}
+
 void SpectrumEngine::reset()
 {
     m_detector.reset();
@@ -57,6 +77,11 @@ bool SpectrumEngine::processFrame(
 
     m_calibrator.powerToDbfs(
         m_detectedPower,
+        m_unsmoothedDbfs
+        );
+
+    m_smoother.process(
+        m_unsmoothedDbfs,
         outputDbfs
         );
 

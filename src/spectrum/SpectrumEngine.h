@@ -9,6 +9,7 @@
 #include "IQBuffer.h"
 #include "SpectrumCalibrator.h"
 #include "SpectrumDetector.h"
+#include "SpectrumSmoother.h"
 
 namespace HFSDR
 {
@@ -22,6 +23,12 @@ public:
 
     void setDetectorMode(SpectrumDetectorMode mode);
     void setAveragingAlpha(float alpha);
+
+    void setSmoothingEnabled(bool enabled);
+    void setSmoothingWindowSize(int windowSize);
+    void setSmoothingDownwardThresholdDb(float thresholdDb);
+    void setSmoothingBlend(float blend);
+
     void reset();
 
     bool processFrame(
@@ -33,10 +40,12 @@ private:
     FFTProcessor m_fftProcessor;
     SpectrumCalibrator m_calibrator;
     SpectrumDetector m_detector;
+    SpectrumSmoother m_smoother;
 
     std::vector<std::complex<float>> m_fftData;
     std::vector<float> m_currentPower;
     std::vector<float> m_detectedPower;
+    std::vector<float> m_unsmoothedDbfs;
 };
 
 } // namespace HFSDR

@@ -19,15 +19,30 @@ Orion::Orion(QObject* parent)
     setFrequencyHz(103600000); // IF Frequency
     setMode(DemodulationMode::WFM);
     setRxBandwidthHz(180000);
-    setSpectrumSpanHz(2000000);
+    setSpectrumSpanHz(1800000);
 
     // Change these two lines to test RTL tuner gain.
     setAutomaticRfGain(true);
     setRfGainDb(28.0); //0.0 - 49.6 dB for RTL // -3 - +71 dB for PlutoSDR (AD9363)
 
+    // Frequency-domain smoothing removes isolated downward FFT spikes
+    // without adding the sluggish response of heavier time averaging.
+
+    /*
+    setSpectrumSmoothingEnabled(true);
+    setSpectrumSmoothingWindowSize(3); //5
+    setSpectrumSmoothingDownwardThresholdDb(2.0); //1.5
+    setSpectrumSmoothingBlend(0.5); //0.75
+    */
+
+    // Frequency-domain downward-spike suppression test
+    setSpectrumSmoothingEnabled(true);
+    setSpectrumSmoothingWindowSize(7);
+    setSpectrumSmoothingDownwardThresholdDb(0.25);
+    setSpectrumSmoothingBlend(1.0);
+
     m_displaySettings.setPeakHold(false);
     m_receiver.startSpectrum();
-
 
     ///// FFT
 
@@ -36,8 +51,6 @@ Orion::Orion(QObject* parent)
     m_displaySettings.setSpectrumRangeDb(60.0);
 
     ///// FFT
-
-
 
 
 
@@ -83,6 +96,43 @@ void Orion::setSpectrumSpanHz(quint32 spanHz)
 {
     m_radio.setSpectrumSpanHz(spanHz);
     Logger::info(QString("Requested spectrum span set to %1 Hz.").arg(m_radio.spectrumSpanHz()));
+}
+
+
+void Orion::setSpectrumSmoothingEnabled(bool enabled)
+{
+    m_receiver.setSpectrumSmoothingEnabled(enabled);
+    Logger::info(
+        QString("Spectrum downward-spike smoothing %1.")
+            .arg(enabled ? "enabled" : "disabled")
+        );
+}
+
+void Orion::setSpectrumSmoothingWindowSize(int windowSize)
+{
+    m_receiver.setSpectrumSmoothingWindowSize(windowSize);
+    Logger::info(
+        QString("Requested spectrum smoothing window set to %1 bins.")
+            .arg(windowSize)
+        );
+}
+
+void Orion::setSpectrumSmoothingDownwardThresholdDb(double thresholdDb)
+{
+    m_receiver.setSpectrumSmoothingDownwardThresholdDb(thresholdDb);
+    Logger::info(
+        QString("Requested spectrum smoothing threshold set to %1 dB.")
+            .arg(thresholdDb, 0, 'f', 2)
+        );
+}
+
+void Orion::setSpectrumSmoothingBlend(double blend)
+{
+    m_receiver.setSpectrumSmoothingBlend(blend);
+    Logger::info(
+        QString("Requested spectrum smoothing blend set to %1.")
+            .arg(blend, 0, 'f', 2)
+        );
 }
 
 void Orion::setAutomaticRfGain(bool enabled)

@@ -2,6 +2,9 @@
 
 #include "Logger.h"
 
+#include <algorithm>
+#include <cmath>
+
 namespace HFSDR
 {
 
@@ -49,6 +52,68 @@ void SpectrumWorker::setSpectrumSpanHz(int spanHz)
     m_spectrumSpanDirty = true;
 }
 
+
+void SpectrumWorker::setSmoothingEnabled(bool enabled)
+{
+    std::lock_guard<std::mutex> lock(m_smoothingMutex);
+
+    if (m_pendingSmoothingEnabled == enabled)
+        return;
+
+    m_pendingSmoothingEnabled = enabled;
+    m_smoothingDirty = true;
+}
+
+void SpectrumWorker::setSmoothingWindowSize(int windowSize)
+{
+    windowSize = std::clamp(windowSize, 3, 9);
+
+    if ((windowSize % 2) == 0)
+        ++windowSize;
+
+    windowSize = std::min(windowSize, 9);
+
+    std::lock_guard<std::mutex> lock(m_smoothingMutex);
+
+    if (m_pendingSmoothingWindowSize == windowSize)
+        return;
+
+    m_pendingSmoothingWindowSize = windowSize;
+    m_smoothingDirty = true;
+}
+
+void SpectrumWorker::setSmoothingDownwardThresholdDb(float thresholdDb)
+{
+    if (!std::isfinite(thresholdDb))
+        return;
+
+    thresholdDb = std::clamp(thresholdDb, 0.0f, 20.0f);
+
+    std::lock_guard<std::mutex> lock(m_smoothingMutex);
+
+    if (m_pendingSmoothingThresholdDb == thresholdDb)
+        return;
+
+    m_pendingSmoothingThresholdDb = thresholdDb;
+    m_smoothingDirty = true;
+}
+
+void SpectrumWorker::setSmoothingBlend(float blend)
+{
+    if (!std::isfinite(blend))
+        return;
+
+    blend = std::clamp(blend, 0.0f, 1.0f);
+
+    std::lock_guard<std::mutex> lock(m_smoothingMutex);
+
+    if (m_pendingSmoothingBlend == blend)
+        return;
+
+    m_pendingSmoothingBlend = blend;
+    m_smoothingDirty = true;
+}
+
 void SpectrumWorker::start()
 {
     if (m_running.exchange(true))
@@ -74,6 +139,7 @@ void SpectrumWorker::start()
             break;
 
         applyPendingSpectrumSpan();
+        applyPendingSmoothingSettings();
 
         m_displayDdc.process(
             m_inputBlock,
@@ -202,6 +268,44 @@ void SpectrumWorker::applyPendingSpectrumSpan()
                 'f',
                 2
                 )
+        );
+}
+
+
+void SpectrumWorker::applyPendingSmoothingSettings()
+{
+    bool enabled = true;
+    int windowSize = 5;
+    float thresholdDb = 1.5f;
+    float blend = 0.75f;
+
+    {
+        std::lock_guard<std::mutex> lock(m_smoothingMutex);
+
+        if (!m_smoothingDirty)
+            return;
+
+        enabled = m_pendingSmoothingEnabled;
+        windowSize = m_pendingSmoothingWindowSize;
+        thresholdDb = m_pendingSmoothingThresholdDb;
+        blend = m_pendingSmoothingBlend;
+        m_smoothingDirty = false;
+    }
+
+    m_engine.setSmoothingEnabled(enabled);
+    m_engine.setSmoothingWindowSize(windowSize);
+    m_engine.setSmoothingDownwardThresholdDb(thresholdDb);
+    m_engine.setSmoothingBlend(blend);
+
+    Logger::info(
+        QString(
+            "Spectrum downward-spike smoother: %1, "
+            "window=%2 bins, threshold=%3 dB, blend=%4."
+            )
+            .arg(enabled ? "enabled" : "disabled")
+            .arg(windowSize)
+            .arg(thresholdDb, 0, 'f', 2)
+            .arg(blend, 0, 'f', 2)
         );
 }
 

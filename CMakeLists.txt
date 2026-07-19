@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Project_Orion VERSION 0.3.2 LANGUAGES CXX)
+project(Project_Orion VERSION 0.3.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -120,6 +120,8 @@ qt_add_qml_module(Project_Orion
         src/spectrum/SpectrumCalibrator.cpp
         src/spectrum/SpectrumDetector.h
         src/spectrum/SpectrumDetector.cpp
+        src/spectrum/SpectrumSmoother.h
+        src/spectrum/SpectrumSmoother.cpp
         src/spectrum/SpectrumEngine.h
         src/spectrum/SpectrumEngine.cpp
         src/spectrum/SpectrumWorker.h

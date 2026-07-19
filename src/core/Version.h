@@ -5,6 +5,6 @@
 #define ORION_VERSION_MINOR 3
 #define ORION_VERSION_PATCH 2
 
-#define ORION_VERSION_STRING "0.3.2"
+#define ORION_VERSION_STRING "0.3.3"
 
 #endif

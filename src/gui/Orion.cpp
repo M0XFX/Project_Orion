@@ -19,14 +19,27 @@ Orion::Orion(QObject* parent)
     setFrequencyHz(103600000); // IF Frequency
     setMode(DemodulationMode::WFM);
     setRxBandwidthHz(180000);
-    setSpectrumSpanHz(1800000);
+    setSpectrumSpanHz(2000000);
 
     // Change these two lines to test RTL tuner gain.
-    setAutomaticRfGain(false);
+    setAutomaticRfGain(true);
     setRfGainDb(28.0); //0.0 - 49.6 dB for RTL // -3 - +71 dB for PlutoSDR (AD9363)
 
     m_displaySettings.setPeakHold(false);
     m_receiver.startSpectrum();
+
+
+    ///// FFT
+
+    m_displaySettings.setAutoScale(false);
+    m_displaySettings.setSpectrumOffsetDb(10.0);
+    m_displaySettings.setSpectrumRangeDb(60.0);
+
+    ///// FFT
+
+
+
+
 
     if (!m_radioController.start())
         Logger::error("Project Orion receiver did not start.");

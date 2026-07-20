@@ -43,7 +43,7 @@ Orion::Orion(QObject* parent)
     // selected detector pipeline. Frequency smoothing now does most of the
     // visual cleanup, so 0.15 is a more responsive starting point.
     setSpectrumTemporalAveragingEnabled(true);
-    setSpectrumTemporalAveragingAlpha(0.15);
+    setSpectrumTemporalAveragingAlpha(0.2);// 0.15
 
     // Limit QML publication rate independently from FFT processing.
     setSpectrumFramesPerSecond(25); //25

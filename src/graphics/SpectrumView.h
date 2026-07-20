@@ -23,6 +23,7 @@ class SpectrumView : public QQuickPaintedItem
 
     Q_PROPERTY(QObject* receiver READ receiver WRITE setReceiver NOTIFY receiverChanged)
     Q_PROPERTY(QObject* displaySettings READ displaySettings WRITE setDisplaySettings NOTIFY displaySettingsChanged)
+    Q_PROPERTY(int spectrumTheme READ spectrumTheme WRITE setSpectrumTheme NOTIFY spectrumThemeChanged)
 
 public:
     explicit SpectrumView(QQuickItem* parent = nullptr);
@@ -33,11 +34,15 @@ public:
     QObject* displaySettings() const noexcept;
     void setDisplaySettings(QObject* settingsObject);
 
+    int spectrumTheme() const noexcept;
+    void setSpectrumTheme(int themeId);
+
     void paint(QPainter* painter) override;
 
 signals:
     void receiverChanged();
     void displaySettingsChanged();
+    void spectrumThemeChanged();
 
 private slots:
     void refreshSpectrum();

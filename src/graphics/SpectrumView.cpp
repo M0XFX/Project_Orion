@@ -41,8 +41,10 @@ SpectrumView::SpectrumView(QQuickItem* parent)
     setAntialiasing(true);
     setRenderTarget(QQuickPaintedItem::FramebufferObject);
 
-    m_graphicsEngine.setSpectrumTheme(SpectrumThemeId::ClassicGreen);
-    m_graphicsEngine.setSpectrumFillEnabled(false);
+    // v0.3.8.0 starts with the SDRSharp-inspired presentation.
+    // ClassicGreen remains available through the spectrumTheme property.
+    m_graphicsEngine.setSpectrumTheme(SpectrumThemeId::SDRSharp);
+    m_graphicsEngine.setSpectrumFillEnabled(true);
     m_graphicsEngine.setSpectrumGradientEnabled(true);
     m_graphicsEngine.setPeakHoldEnabled(false);
 
@@ -96,6 +98,34 @@ void SpectrumView::setReceiver(QObject* receiverObject)
 QObject* SpectrumView::displaySettings() const noexcept
 {
     return m_displaySettings.data();
+}
+
+int SpectrumView::spectrumTheme() const noexcept
+{
+    return static_cast<int>(m_graphicsEngine.spectrumThemeId());
+}
+
+void SpectrumView::setSpectrumTheme(int themeId)
+{
+    SpectrumThemeId requestedTheme = SpectrumThemeId::ClassicGreen;
+
+    switch (themeId) {
+    case static_cast<int>(SpectrumThemeId::SDRSharp):
+        requestedTheme = SpectrumThemeId::SDRSharp;
+        break;
+
+    case static_cast<int>(SpectrumThemeId::ClassicGreen):
+    default:
+        requestedTheme = SpectrumThemeId::ClassicGreen;
+        break;
+    }
+
+    if (m_graphicsEngine.spectrumThemeId() == requestedTheme)
+        return;
+
+    m_graphicsEngine.setSpectrumTheme(requestedTheme);
+    update();
+    emit spectrumThemeChanged();
 }
 
 void SpectrumView::setDisplaySettings(QObject* settingsObject)
@@ -184,8 +214,8 @@ void SpectrumView::refreshDisplaySettings()
 
     const bool peakHoldEnabled = m_displaySettings->peakHold();
     m_graphicsEngine.setPeakHoldEnabled(peakHoldEnabled);
-    m_graphicsEngine.setSpectrumFillEnabled(
-        m_displaySettings->spectrumFillEnabled());
+
+    m_graphicsEngine.setSpectrumFillEnabled(true);
 
     if (!peakHoldEnabled)
         m_peakBinsDbfs.clear();

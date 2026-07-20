@@ -20,7 +20,7 @@ SpectrumTheme makeClassicGreenTheme()
         {1.00, QColor(0, 25, 0, 25)}
     };
 
-    theme.traceWidth = 1.25;
+    theme.traceWidth = 0.75; //1.25
     theme.peakHoldWidth = 1.0;
     theme.centreLineWidth = 1.0;
 
